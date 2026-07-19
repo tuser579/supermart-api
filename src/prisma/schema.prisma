@@ -17,11 +17,12 @@ model User {
   email        String    @unique
   phone        String    @unique
   passwordHash String
-  role         Role      @default(USER)
-  profileImage String?
-  isVerified   Boolean   @default(false)
-  isActive     Boolean   @default(true)
-  lastLogin    DateTime?
+  role           Role      @default(USER)
+  profileImage   String?
+  expoPushToken  String?
+  isVerified     Boolean   @default(false)
+  isActive       Boolean   @default(true)
+  lastLogin      DateTime?
 
   // Relations
   orders        Order[]
@@ -31,6 +32,7 @@ model User {
   cart          Cart?
   notifications Notification[]
   products      Product[]
+  addresses     Address[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -42,6 +44,31 @@ enum Role {
   USER
   STAFF
   ADMIN
+}
+
+// ============================================================
+// ADDRESS MODEL
+// ============================================================
+
+model Address {
+  id           String  @id @default(cuid())
+  userId       String
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label        String  // "Home", "Office", etc.
+  fullName     String
+  phone        String
+  addressLine1 String
+  addressLine2 String?
+  city         String
+  area         String
+  postalCode   String?
+  isDefault    Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("addresses")
 }
 
 // ============================================================
@@ -199,9 +226,12 @@ model Order {
   user               User        @relation(fields: [userId], references: [id])
   items              OrderItem[]
   totalAmount        Float
-  discount           Float       @default(0)
-  deliveryCharge     Float       @default(0)
-  status             OrderStatus @default(PENDING)
+  discount           Float         @default(0)
+  deliveryCharge     Float         @default(0)
+  status             OrderStatus   @default(PENDING)
+  paymentMethod      PaymentMethod @default(COD)
+  paymentStatus      PaymentStatus @default(PENDING)
+  transactionId      String?
   deliveryAddress    Json
   assignedStaffId    String?
   assignedStaff      Staff?      @relation("assignedOrders", fields: [assignedStaffId], references: [id])
@@ -224,6 +254,22 @@ enum OrderStatus {
   SHIPPED
   DELIVERED
   CANCELLED
+}
+
+enum PaymentMethod {
+  COD
+  BKASH
+  ROCKET
+  NOGOD
+  BANK_TRANSFER
+  CARD
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
 }
 
 model OrderItem {

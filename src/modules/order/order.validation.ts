@@ -13,6 +13,8 @@ const deliveryAddressSchema = z.object({
 export const createOrderSchema = z.object({
   deliveryAddress: deliveryAddressSchema,
   notes: z.string().max(500).optional(),
+  paymentMethod: z.enum(['COD', 'BKASH', 'ROCKET', 'NOGOD', 'BANK_TRANSFER', 'CARD']),
+  transactionId: z.string().optional(),
 });
 
 export const updateOrderStatusSchema = z.object({

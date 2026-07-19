@@ -15,6 +15,8 @@ import staffRoutes from './modules/staff/staff.routes';
 import adminRoutes from './modules/admin/admin.routes';
 import reviewRoutes from './modules/review/review.routes';
 import notificationRoutes from './modules/notification/notification.routes';
+import { paymentRoutes } from './modules/payment/payment.routes';
+import addressRoutes from './modules/address/address.routes';
 
 const app: Application = express();
 
@@ -55,6 +57,8 @@ app.use(`${API_PREFIX}/staff`, staffRoutes);
 app.use(`${API_PREFIX}/admin`, adminRoutes);
 app.use(`${API_PREFIX}/reviews`, reviewRoutes);
 app.use(`${API_PREFIX}/notifications`, notificationRoutes);
+app.use(`${API_PREFIX}/payments`, paymentRoutes);
+app.use(`${API_PREFIX}/addresses`, addressRoutes);
 
 // ─── 404 Handler ──────────────────────────────────────────────────
 app.use((_req: Request, res: Response) => {

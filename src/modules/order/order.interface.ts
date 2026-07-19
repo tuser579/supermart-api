@@ -11,6 +11,8 @@ export interface IDeliveryAddress {
 export interface ICreateOrderDTO {
   deliveryAddress: IDeliveryAddress;
   notes?: string;
+  paymentMethod: string;
+  transactionId?: string;
 }
 
 export interface IUpdateOrderStatusDTO {

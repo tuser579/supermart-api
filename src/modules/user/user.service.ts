@@ -69,4 +69,11 @@ export const userService = {
       data: { isActive: false },
     });
   },
+
+  savePushToken: async (userId: string, token: string): Promise<void> => {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { expoPushToken: token },
+    });
+  },
 };

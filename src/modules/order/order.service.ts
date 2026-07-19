@@ -57,6 +57,9 @@ export const orderService = {
           deliveryCharge: DELIVERY_CHARGE,
           deliveryAddress: dto.deliveryAddress as any,
           notes: dto.notes,
+          paymentMethod: dto.paymentMethod as any,
+          paymentStatus: (dto.paymentMethod === 'COD' ? 'PENDING' : 'COMPLETED') as any,
+          transactionId: dto.transactionId,
           items: {
             create: cart.items.map((item) => ({
               productId: item.productId,

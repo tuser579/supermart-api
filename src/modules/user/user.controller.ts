@@ -27,4 +27,10 @@ export const userController = {
     await userService.deleteAccount(userId);
     res.status(200).json(ApiResponse.success('Account deactivated successfully', null));
   }),
+
+  savePushToken: asyncHandler(async (req: Request, res: Response) => {
+    const userId = req.user!.userId;
+    await userService.savePushToken(userId, req.body.token);
+    res.status(200).json(ApiResponse.success('Push token saved successfully', null));
+  }),
 };

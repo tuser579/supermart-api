@@ -3,6 +3,11 @@ import { userController } from './user.controller';
 import { authMiddleware } from '../../shared/middleware/auth.middleware';
 import { validate } from '../../shared/middleware/validation.middleware';
 import { updateProfileSchema, changePasswordSchema } from './user.validation';
+import { z } from 'zod';
+
+const pushTokenSchema = z.object({
+  token: z.string().min(1, 'Push token is required'),
+});
 
 const router = Router();
 
@@ -20,5 +25,8 @@ router.put('/change-password', validate(changePasswordSchema), userController.ch
 
 // DELETE /api/v1/users/account
 router.delete('/account', userController.deleteAccount);
+
+// POST /api/v1/users/push-token — save Expo push token
+router.post('/push-token', validate(pushTokenSchema), userController.savePushToken);
 
 export default router;
