@@ -23,7 +23,7 @@ const app: Application = express();
 // ─── Security Middleware ───────────────────────────────────────────
 app.use(helmet());
 app.use(cors({
-  origin: (process.env.ALLOWED_ORIGINS || 'http://localhost:3000').split(','),
+  origin: (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:8081,http://10.0.2.2:8081').split(','),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
