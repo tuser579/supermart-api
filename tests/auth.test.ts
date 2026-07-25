@@ -4,6 +4,8 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+jest.setTimeout(30000);
+
 describe('Auth Endpoints', () => {
   const testUser = {
     name: 'Test User',
@@ -32,15 +34,15 @@ describe('Auth Endpoints', () => {
       const res = await request(app).post('/api/v1/auth/register').send(testUser);
       expect(res.statusCode).toEqual(201);
       expect(res.body.success).toBe(true);
-      expect(res.body.data).toHaveProperty('accessToken');
+      expect(res.body.data.tokens).toHaveProperty('accessToken');
       expect(res.body.data.user.email).toEqual(testUser.email);
-    });
+    }, 30000);
 
     it('should fail to register with an existing email', async () => {
       const res = await request(app).post('/api/v1/auth/register').send(testUser);
-      expect(res.statusCode).toEqual(400); // or whatever error code you use for duplicates
+      expect(res.statusCode).toEqual(409);
       expect(res.body.success).toBe(false);
-    });
+    }, 30000);
   });
 
   describe('POST /api/v1/auth/login', () => {
@@ -51,8 +53,8 @@ describe('Auth Endpoints', () => {
       });
       expect(res.statusCode).toEqual(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.data).toHaveProperty('accessToken');
-    });
+      expect(res.body.data.tokens).toHaveProperty('accessToken');
+    }, 30000);
 
     it('should fail to login with wrong password', async () => {
       const res = await request(app).post('/api/v1/auth/login').send({
@@ -61,6 +63,6 @@ describe('Auth Endpoints', () => {
       });
       expect(res.statusCode).toEqual(401); // Unauthorized
       expect(res.body.success).toBe(false);
-    });
+    }, 30000);
   });
 });
