@@ -11,6 +11,7 @@ COPY src/prisma ./src/prisma/
 RUN npx prisma generate
 
 COPY tsconfig.json ./
+COPY server.ts ./
 COPY src ./src
 RUN npx tsc --project tsconfig.json
 
