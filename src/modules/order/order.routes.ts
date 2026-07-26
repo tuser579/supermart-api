@@ -29,33 +29,6 @@ router.get(
   orderController.getOrders
 );
 
-// GET /api/v1/orders/:id
-router.get('/:id', requireRole('USER', 'ADMIN', 'STAFF'), orderController.getOrderById);
-
-// PUT /api/v1/orders/:id/status — ADMIN / STAFF
-router.put(
-  '/:id/status',
-  requireRole('ADMIN', 'STAFF'),
-  validate(updateOrderStatusSchema),
-  orderController.updateOrderStatus
-);
-
-// POST /api/v1/orders/:id/assign — ADMIN
-router.post(
-  '/:id/assign',
-  requireRole('ADMIN'),
-  validate(assignDeliverySchema),
-  orderController.assignDelivery
-);
-
-// POST /api/v1/orders/:id/cancel — USER
-router.post(
-  '/:id/cancel',
-  requireRole('USER'),
-  validate(z.object({ reason: z.string().max(500).optional() })),
-  orderController.cancelOrder
-);
-
 // POST /api/v1/orders/:id/pay — USER
 router.post(
   '/:id/pay',
@@ -71,5 +44,32 @@ router.post(
   validate(returnOrderSchema),
   orderController.returnOrder
 );
+
+// POST /api/v1/orders/:id/cancel — USER
+router.post(
+  '/:id/cancel',
+  requireRole('USER'),
+  validate(z.object({ reason: z.string().max(500).optional() })),
+  orderController.cancelOrder
+);
+
+// POST /api/v1/orders/:id/assign — ADMIN
+router.post(
+  '/:id/assign',
+  requireRole('ADMIN'),
+  validate(assignDeliverySchema),
+  orderController.assignDelivery
+);
+
+// PUT /api/v1/orders/:id/status — ADMIN / STAFF
+router.put(
+  '/:id/status',
+  requireRole('ADMIN', 'STAFF'),
+  validate(updateOrderStatusSchema),
+  orderController.updateOrderStatus
+);
+
+// GET /api/v1/orders/:id — GET single order
+router.get('/:id', requireRole('USER', 'ADMIN', 'STAFF'), orderController.getOrderById);
 
 export default router;
