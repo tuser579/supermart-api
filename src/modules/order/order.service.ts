@@ -19,8 +19,7 @@ const DELIVERY_CHARGE = 60; // BDT
 
 export const orderService = {
   createOrder: async (userId: string, dto: ICreateOrderDTO) => {
-    // Get user's cart
-    const cart = await prisma.cart.findUnique({
+    let cart = await prisma.cart.findUnique({
       where: { userId },
       include: {
         items: {
@@ -28,6 +27,27 @@ export const orderService = {
         },
       },
     });
+
+    // If server cart is empty but payload items are supplied (e.g. client local cart sync), populate cart
+    if ((!cart || cart.items.length === 0) && dto.items && dto.items.length > 0) {
+      const { cartService } = require('../cart/cart.service');
+      for (const itemDto of dto.items) {
+        try {
+          await cartService.addItem(userId, {
+            productId: itemDto.productId,
+            quantity: itemDto.quantity,
+          });
+        } catch (e) {}
+      }
+      cart = await prisma.cart.findUnique({
+        where: { userId },
+        include: {
+          items: {
+            include: { product: true },
+          },
+        },
+      });
+    }
 
     if (!cart || cart.items.length === 0) {
       throw ApiError.badRequest('Cart is empty. Add items before placing an order.');

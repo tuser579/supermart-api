@@ -15,6 +15,10 @@ export const createOrderSchema = z.object({
   notes: z.string().max(500).optional(),
   paymentMethod: z.enum(['COD', 'BKASH', 'ROCKET', 'NOGOD', 'BANK_TRANSFER', 'CARD']),
   transactionId: z.string().optional(),
+  items: z.array(z.object({
+    productId: z.string().min(1, 'Invalid product ID'),
+    quantity: z.number().int().positive('Quantity must be positive'),
+  })).optional(),
 });
 
 export const updateOrderStatusSchema = z.object({

@@ -13,6 +13,7 @@ export interface ICreateOrderDTO {
   notes?: string;
   paymentMethod: string;
   transactionId?: string;
+  items?: Array<{ productId: string; quantity: number }>;
 }
 
 export interface IUpdateOrderStatusDTO {
