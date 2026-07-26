@@ -7,12 +7,27 @@ import { z } from 'zod';
 const router = Router();
 
 const addItemSchema = z.object({
-  productId: z.string().min(1, 'Invalid product ID'),
-  quantity: z.coerce.number().int().positive('Quantity must be a positive integer'),
+  productId: z.preprocess(
+    (val) => (val ? String(val).trim() : ''),
+    z.string().min(1, 'Invalid product ID')
+  ),
+  quantity: z.preprocess(
+    (val) => {
+      const num = Number(val);
+      return isNaN(num) || num < 1 ? 1 : Math.round(num);
+    },
+    z.number().int().positive()
+  ),
 });
 
 const updateItemSchema = z.object({
-  quantity: z.coerce.number().int().nonnegative('Quantity must be 0 or more'),
+  quantity: z.preprocess(
+    (val) => {
+      const num = Number(val);
+      return isNaN(num) || num < 0 ? 0 : Math.round(num);
+    },
+    z.number().int().nonnegative()
+  ),
 });
 
 // All cart routes require auth
