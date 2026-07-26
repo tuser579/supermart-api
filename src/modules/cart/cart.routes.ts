@@ -8,11 +8,11 @@ const router = Router();
 
 const addItemSchema = z.object({
   productId: z.string().min(1, 'Invalid product ID'),
-  quantity: z.number().int().positive('Quantity must be a positive integer'),
+  quantity: z.coerce.number().int().positive('Quantity must be a positive integer'),
 });
 
 const updateItemSchema = z.object({
-  quantity: z.number().int().nonnegative('Quantity must be 0 or more'),
+  quantity: z.coerce.number().int().nonnegative('Quantity must be 0 or more'),
 });
 
 // All cart routes require auth
