@@ -20,32 +20,35 @@ exports.orderService = {
                 },
             },
         });
-        // If server cart is empty but payload items are supplied (e.g. client local cart sync), populate cart
-        if ((!cart || cart.items.length === 0) && dto.items && dto.items.length > 0) {
-            const { cartService } = require('../cart/cart.service');
+        let orderItems = [];
+        if (cart && cart.items.length > 0) {
+            // Use existing server cart
+            orderItems = cart.items.map((item) => ({
+                productId: item.productId,
+                quantity: item.quantity,
+                price: item.price,
+                product: item.product,
+            }));
+        }
+        else if (dto.items && dto.items.length > 0) {
+            // Cart empty but payload items supplied — resolve each product from DB directly
             for (const itemDto of dto.items) {
-                try {
-                    await cartService.addItem(userId, {
+                const product = await database_config_1.prisma.product.findUnique({ where: { id: itemDto.productId } });
+                if (product) {
+                    orderItems.push({
                         productId: itemDto.productId,
                         quantity: itemDto.quantity,
+                        price: product.discountPrice ?? product.price,
+                        product: { name: product.name, isActive: product.isActive, stock: product.stock },
                     });
                 }
-                catch (e) { }
             }
-            cart = await database_config_1.prisma.cart.findUnique({
-                where: { userId },
-                include: {
-                    items: {
-                        include: { product: true },
-                    },
-                },
-            });
         }
-        if (!cart || cart.items.length === 0) {
+        if (orderItems.length === 0) {
             throw ApiError_1.ApiError.badRequest('Cart is empty. Add items before placing an order.');
         }
         // Validate stock for all items
-        for (const item of cart.items) {
+        for (const item of orderItems) {
             if (!item.product.isActive) {
                 throw ApiError_1.ApiError.badRequest(`Product "${item.product.name}" is no longer available`);
             }
@@ -53,7 +56,7 @@ exports.orderService = {
                 throw ApiError_1.ApiError.badRequest(`Insufficient stock for "${item.product.name}". Available: ${item.product.stock}`);
             }
         }
-        const subtotal = cart.totalAmount;
+        const subtotal = orderItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
         const totalAmount = subtotal + DELIVERY_CHARGE;
         // Create order
         const newOrder = await database_config_1.prisma.order.create({
@@ -68,7 +71,7 @@ exports.orderService = {
                 paymentStatus: (dto.paymentMethod === 'COD' ? 'PENDING' : 'COMPLETED'),
                 transactionId: dto.transactionId,
                 items: {
-                    create: cart.items.map((item) => ({
+                    create: orderItems.map((item) => ({
                         productId: item.productId,
                         quantity: item.quantity,
                         price: item.price,
@@ -81,7 +84,7 @@ exports.orderService = {
             },
         });
         // Decrement product stocks
-        for (const item of cart.items) {
+        for (const item of orderItems) {
             try {
                 await database_config_1.prisma.product.update({
                     where: { id: item.productId },
@@ -90,12 +93,14 @@ exports.orderService = {
             }
             catch (e) { }
         }
-        // Clear cart
-        try {
-            await database_config_1.prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
-            await database_config_1.prisma.cart.update({ where: { id: cart.id }, data: { totalAmount: 0 } });
+        // Clear cart if it existed
+        if (cart) {
+            try {
+                await database_config_1.prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
+                await database_config_1.prisma.cart.update({ where: { id: cart.id }, data: { totalAmount: 0 } });
+            }
+            catch (e) { }
         }
-        catch (e) { }
         // Send notification
         await notification_service_1.notificationService.create({
             userId,

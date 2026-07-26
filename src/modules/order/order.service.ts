@@ -28,33 +28,39 @@ export const orderService = {
       },
     });
 
-    // If server cart is empty but payload items are supplied (e.g. client local cart sync), populate cart
-    if ((!cart || cart.items.length === 0) && dto.items && dto.items.length > 0) {
-      const { cartService } = require('../cart/cart.service');
+    // Build order items either from server cart or from dto.items payload
+    type OrderItemInput = { productId: string; quantity: number; price: number; product: { name: string; isActive: boolean; stock: number } };
+    let orderItems: OrderItemInput[] = [];
+
+    if (cart && cart.items.length > 0) {
+      // Use existing server cart
+      orderItems = cart.items.map((item) => ({
+        productId: item.productId,
+        quantity: item.quantity,
+        price: item.price,
+        product: item.product,
+      }));
+    } else if (dto.items && dto.items.length > 0) {
+      // Cart empty but payload items supplied — resolve each product from DB directly
       for (const itemDto of dto.items) {
-        try {
-          await cartService.addItem(userId, {
+        const product = await prisma.product.findUnique({ where: { id: itemDto.productId } });
+        if (product) {
+          orderItems.push({
             productId: itemDto.productId,
             quantity: itemDto.quantity,
+            price: product.discountPrice ?? product.price,
+            product: { name: product.name, isActive: product.isActive, stock: product.stock },
           });
-        } catch (e) {}
+        }
       }
-      cart = await prisma.cart.findUnique({
-        where: { userId },
-        include: {
-          items: {
-            include: { product: true },
-          },
-        },
-      });
     }
 
-    if (!cart || cart.items.length === 0) {
+    if (orderItems.length === 0) {
       throw ApiError.badRequest('Cart is empty. Add items before placing an order.');
     }
 
     // Validate stock for all items
-    for (const item of cart.items) {
+    for (const item of orderItems) {
       if (!item.product.isActive) {
         throw ApiError.badRequest(`Product "${item.product.name}" is no longer available`);
       }
@@ -65,7 +71,7 @@ export const orderService = {
       }
     }
 
-    const subtotal = cart.totalAmount;
+    const subtotal = orderItems.reduce((sum, i) => sum + i.price * i.quantity, 0);
     const totalAmount = subtotal + DELIVERY_CHARGE;
 
     // Create order
@@ -81,7 +87,7 @@ export const orderService = {
         paymentStatus: (dto.paymentMethod === 'COD' ? 'PENDING' : 'COMPLETED') as any,
         transactionId: dto.transactionId,
         items: {
-          create: cart.items.map((item) => ({
+          create: orderItems.map((item) => ({
             productId: item.productId,
             quantity: item.quantity,
             price: item.price,
@@ -95,7 +101,7 @@ export const orderService = {
     });
 
     // Decrement product stocks
-    for (const item of cart.items) {
+    for (const item of orderItems) {
       try {
         await prisma.product.update({
           where: { id: item.productId },
@@ -104,11 +110,13 @@ export const orderService = {
       } catch (e) {}
     }
 
-    // Clear cart
-    try {
-      await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
-      await prisma.cart.update({ where: { id: cart.id }, data: { totalAmount: 0 } });
-    } catch (e) {}
+    // Clear cart if it existed
+    if (cart) {
+      try {
+        await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
+        await prisma.cart.update({ where: { id: cart.id }, data: { totalAmount: 0 } });
+      } catch (e) {}
+    }
 
     // Send notification
     await notificationService.create({
