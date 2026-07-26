@@ -68,62 +68,58 @@ export const orderService = {
     const subtotal = cart.totalAmount;
     const totalAmount = subtotal + DELIVERY_CHARGE;
 
-    // Use transaction to create order and update stocks atomically
-    const order = await prisma.$transaction(
-      async (tx) => {
-        // Create order
-        const newOrder = await tx.order.create({
-          data: {
-            orderId: generateOrderId(),
-            userId,
-            totalAmount,
-            deliveryCharge: DELIVERY_CHARGE,
-            deliveryAddress: dto.deliveryAddress as any,
-            notes: dto.notes,
-            paymentMethod: dto.paymentMethod as any,
-            paymentStatus: (dto.paymentMethod === 'COD' ? 'PENDING' : 'COMPLETED') as any,
-            transactionId: dto.transactionId,
-            items: {
-              create: cart.items.map((item) => ({
-                productId: item.productId,
-                quantity: item.quantity,
-                price: item.price,
-              })),
-            },
-          },
-          include: {
-            items: { include: { product: { select: { id: true, name: true, images: true } } } },
-            user: { select: { id: true, name: true, email: true } },
-          },
-        });
-
-        // Decrement product stocks
-        for (const item of cart.items) {
-          await tx.product.update({
-            where: { id: item.productId },
-            data: { stock: { decrement: item.quantity } },
-          });
-        }
-
-        // Clear cart
-        await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
-        await tx.cart.update({ where: { id: cart.id }, data: { totalAmount: 0 } });
-
-        return newOrder;
+    // Create order
+    const newOrder = await prisma.order.create({
+      data: {
+        orderId: generateOrderId(),
+        userId,
+        totalAmount,
+        deliveryCharge: DELIVERY_CHARGE,
+        deliveryAddress: dto.deliveryAddress as any,
+        notes: dto.notes,
+        paymentMethod: dto.paymentMethod as any,
+        paymentStatus: (dto.paymentMethod === 'COD' ? 'PENDING' : 'COMPLETED') as any,
+        transactionId: dto.transactionId,
+        items: {
+          create: cart.items.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+            price: item.price,
+          })),
+        },
       },
-      { maxWait: 10000, timeout: 30000 }
-    );
+      include: {
+        items: { include: { product: { select: { id: true, name: true, images: true } } } },
+        user: { select: { id: true, name: true, email: true } },
+      },
+    });
+
+    // Decrement product stocks
+    for (const item of cart.items) {
+      try {
+        await prisma.product.update({
+          where: { id: item.productId },
+          data: { stock: { decrement: item.quantity } },
+        });
+      } catch (e) {}
+    }
+
+    // Clear cart
+    try {
+      await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
+      await prisma.cart.update({ where: { id: cart.id }, data: { totalAmount: 0 } });
+    } catch (e) {}
 
     // Send notification
     await notificationService.create({
       userId,
       title: 'Order Placed Successfully! 🛒',
-      message: `Your order ${order.orderId} has been placed and is being confirmed.`,
+      message: `Your order ${newOrder.orderId} has been placed and is being confirmed.`,
       type: 'ORDER',
-      data: { orderId: order.id, orderRefId: order.orderId },
+      data: { orderId: newOrder.id, orderRefId: newOrder.orderId },
     });
 
-    return order;
+    return newOrder;
   },
 
   getOrders: async (userId: string, role: string, params: IOrderQueryParams) => {
