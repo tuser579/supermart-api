@@ -7,7 +7,7 @@ import { z } from 'zod';
 const router = Router();
 
 const addItemSchema = z.object({
-  productId: z.string().cuid('Invalid product ID'),
+  productId: z.string().min(1, 'Invalid product ID'),
   quantity: z.number().int().positive('Quantity must be a positive integer'),
 });
 

@@ -6,6 +6,8 @@ import { validate } from '../../shared/middleware/validation.middleware';
 import {
   createOrderSchema,
   updateOrderStatusSchema,
+  returnOrderSchema,
+  payOrderSchema,
   assignDeliverySchema,
   orderQuerySchema,
 } from './order.validation';
@@ -52,6 +54,22 @@ router.post(
   requireRole('USER'),
   validate(z.object({ reason: z.string().max(500).optional() })),
   orderController.cancelOrder
+);
+
+// POST /api/v1/orders/:id/pay — USER
+router.post(
+  '/:id/pay',
+  requireRole('USER'),
+  validate(payOrderSchema),
+  orderController.payOrder
+);
+
+// POST /api/v1/orders/:id/return — USER
+router.post(
+  '/:id/return',
+  requireRole('USER'),
+  validate(returnOrderSchema),
+  orderController.returnOrder
 );
 
 export default router;

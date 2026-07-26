@@ -8,7 +8,7 @@ import { z } from 'zod';
 const router = Router();
 
 const createReviewSchema = z.object({
-  productId: z.string().cuid('Invalid product ID'),
+  productId: z.string().min(1, 'Invalid product ID'),
   rating: z.number().int().min(1, 'Rating must be at least 1').max(5, 'Rating must be at most 5'),
   comment: z.string().max(1000).optional(),
   images: z.array(z.string().url()).max(5).optional(),

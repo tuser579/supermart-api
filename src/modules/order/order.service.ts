@@ -4,6 +4,8 @@ import { notificationService } from '../notification/notification.service';
 import {
   ICreateOrderDTO,
   IUpdateOrderStatusDTO,
+  IReturnOrderDTO,
+  IPayOrderDTO,
   IOrderQueryParams,
 } from './order.interface';
 
@@ -47,47 +49,50 @@ export const orderService = {
     const totalAmount = subtotal + DELIVERY_CHARGE;
 
     // Use transaction to create order and update stocks atomically
-    const order = await prisma.$transaction(async (tx) => {
-      // Create order
-      const newOrder = await tx.order.create({
-        data: {
-          orderId: generateOrderId(),
-          userId,
-          totalAmount,
-          deliveryCharge: DELIVERY_CHARGE,
-          deliveryAddress: dto.deliveryAddress as any,
-          notes: dto.notes,
-          paymentMethod: dto.paymentMethod as any,
-          paymentStatus: (dto.paymentMethod === 'COD' ? 'PENDING' : 'COMPLETED') as any,
-          transactionId: dto.transactionId,
-          items: {
-            create: cart.items.map((item) => ({
-              productId: item.productId,
-              quantity: item.quantity,
-              price: item.price,
-            })),
+    const order = await prisma.$transaction(
+      async (tx) => {
+        // Create order
+        const newOrder = await tx.order.create({
+          data: {
+            orderId: generateOrderId(),
+            userId,
+            totalAmount,
+            deliveryCharge: DELIVERY_CHARGE,
+            deliveryAddress: dto.deliveryAddress as any,
+            notes: dto.notes,
+            paymentMethod: dto.paymentMethod as any,
+            paymentStatus: (dto.paymentMethod === 'COD' ? 'PENDING' : 'COMPLETED') as any,
+            transactionId: dto.transactionId,
+            items: {
+              create: cart.items.map((item) => ({
+                productId: item.productId,
+                quantity: item.quantity,
+                price: item.price,
+              })),
+            },
           },
-        },
-        include: {
-          items: { include: { product: { select: { id: true, name: true, images: true } } } },
-          user: { select: { id: true, name: true, email: true } },
-        },
-      });
-
-      // Decrement product stocks
-      for (const item of cart.items) {
-        await tx.product.update({
-          where: { id: item.productId },
-          data: { stock: { decrement: item.quantity } },
+          include: {
+            items: { include: { product: { select: { id: true, name: true, images: true } } } },
+            user: { select: { id: true, name: true, email: true } },
+          },
         });
-      }
 
-      // Clear cart
-      await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
-      await tx.cart.update({ where: { id: cart.id }, data: { totalAmount: 0 } });
+        // Decrement product stocks
+        for (const item of cart.items) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { stock: { decrement: item.quantity } },
+          });
+        }
 
-      return newOrder;
-    });
+        // Clear cart
+        await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
+        await tx.cart.update({ where: { id: cart.id }, data: { totalAmount: 0 } });
+
+        return newOrder;
+      },
+      { maxWait: 10000, timeout: 30000 }
+    );
 
     // Send notification
     await notificationService.create({
@@ -180,7 +185,9 @@ export const orderService = {
       CONFIRMED: ['PROCESSING', 'CANCELLED'],
       PROCESSING: ['SHIPPED'],
       SHIPPED: ['DELIVERED'],
-      DELIVERED: [],
+      DELIVERED: ['RETURN_REQUESTED', 'RETURNED'],
+      RETURN_REQUESTED: ['RETURNED', 'DELIVERED'],
+      RETURNED: [],
       CANCELLED: [],
     };
 
@@ -192,9 +199,12 @@ export const orderService = {
     }
 
     const updateData: any = { status: dto.status };
-    if (dto.status === 'DELIVERED') updateData.deliveredAt = new Date();
-    if (dto.status === 'CANCELLED') {
-      updateData.cancellationReason = dto.cancellationReason;
+    if (dto.status === 'DELIVERED') {
+      updateData.deliveredAt = new Date();
+    }
+    if (dto.status === 'CANCELLED' || dto.status === 'RETURNED') {
+      if (dto.status === 'CANCELLED') updateData.cancellationReason = dto.cancellationReason;
+      if (dto.status === 'RETURNED') updateData.paymentStatus = 'REFUNDED';
       // Restore stock
       const orderWithItems = await prisma.order.findUnique({
         where: { id: orderId },
@@ -227,7 +237,7 @@ export const orderService = {
   assignDelivery: async (orderId: string, staffId: string) => {
     const order = await prisma.order.findUnique({ where: { id: orderId } });
     if (!order) throw ApiError.notFound('Order not found');
-    if (order.status === 'DELIVERED' || order.status === 'CANCELLED') {
+    if (order.status === 'DELIVERED' || order.status === 'CANCELLED' || order.status === 'RETURNED') {
       throw ApiError.badRequest('Cannot assign delivery for completed or cancelled orders');
     }
 
@@ -278,6 +288,67 @@ export const orderService = {
       }
 
       return updated;
+    });
+
+    return updatedOrder;
+  },
+
+  returnOrder: async (orderId: string, userId: string, dto: IReturnOrderDTO) => {
+    const order = await prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) throw ApiError.notFound('Order not found');
+    if (order.userId !== userId) throw ApiError.forbidden('Access denied');
+    if (order.status !== 'DELIVERED') {
+      throw ApiError.badRequest('Order must be delivered before initiating a return request');
+    }
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: 'RETURN_REQUESTED' as any,
+        returnReason: dto.reason,
+        returnDetails: dto.details,
+        returnImages: dto.images || [],
+      },
+    });
+
+    await notificationService.create({
+      userId,
+      title: 'Return Request Submitted 📦',
+      message: `Your return request for order ${order.orderId} has been submitted and is under review.`,
+      type: 'ORDER',
+      data: { orderId: order.id, status: 'RETURN_REQUESTED' },
+    });
+
+    return updatedOrder;
+  },
+
+  payOrder: async (orderId: string, userId: string, dto: IPayOrderDTO) => {
+    const order = await prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) throw ApiError.notFound('Order not found');
+    if (order.userId !== userId) throw ApiError.forbidden('Access denied');
+
+    if (order.status !== 'DELIVERED') {
+      throw ApiError.badRequest('Payment can only be submitted after the order has been delivered');
+    }
+    if (order.paymentStatus === 'COMPLETED') {
+      throw ApiError.badRequest('Payment for this order has already been completed');
+    }
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        paymentStatus: 'COMPLETED',
+        paymentMethod: dto.paymentMethod as any,
+        transactionId: dto.transactionId || order.transactionId,
+      },
+    });
+
+    await notificationService.create({
+      userId,
+      title: 'Payment Received 💳',
+      message: `Payment of ৳${order.totalAmount} for order ${order.orderId} was successfully recorded.`,
+      type: 'ORDER',
+      data: { orderId: order.id, paymentStatus: 'COMPLETED' },
     });
 
     return updatedOrder;

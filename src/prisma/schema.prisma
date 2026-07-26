@@ -237,6 +237,9 @@ model Order {
   assignedStaff      Staff?      @relation("assignedOrders", fields: [assignedStaffId], references: [id])
   deliveredAt        DateTime?
   cancellationReason String?
+  returnReason       String?
+  returnDetails      String?
+  returnImages       String[]
   notes              String?
 
   createdAt DateTime @default(now())
@@ -254,6 +257,8 @@ enum OrderStatus {
   SHIPPED
   DELIVERED
   CANCELLED
+  RETURN_REQUESTED
+  RETURNED
 }
 
 enum PaymentMethod {

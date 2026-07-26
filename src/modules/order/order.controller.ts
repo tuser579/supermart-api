@@ -50,4 +50,22 @@ export const orderController = {
     );
     res.status(200).json(ApiResponse.success('Order cancelled successfully', order));
   }),
+
+  returnOrder: asyncHandler(async (req: Request, res: Response) => {
+    const order = await orderService.returnOrder(
+      req.params.id as string,
+      req.user!.userId,
+      req.body
+    );
+    res.status(200).json(ApiResponse.success('Return request submitted successfully', order));
+  }),
+
+  payOrder: asyncHandler(async (req: Request, res: Response) => {
+    const order = await orderService.payOrder(
+      req.params.id as string,
+      req.user!.userId,
+      req.body
+    );
+    res.status(200).json(ApiResponse.success('Payment recorded successfully', order));
+  }),
 };

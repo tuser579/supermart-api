@@ -20,6 +20,17 @@ export interface IUpdateOrderStatusDTO {
   cancellationReason?: string;
 }
 
+export interface IReturnOrderDTO {
+  reason: string;
+  details?: string;
+  images?: string[];
+}
+
+export interface IPayOrderDTO {
+  paymentMethod: string;
+  transactionId?: string;
+}
+
 export interface IAssignDeliveryDTO {
   staffId: string;
 }
