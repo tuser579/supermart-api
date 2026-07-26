@@ -10,14 +10,14 @@ RUN apk add --no-cache openssl
 COPY package*.json ./
 COPY src/prisma ./src/prisma/
 
-# Install dependencies
+# Install all dependencies
 RUN npm install
 
-# Generate Prisma client
-RUN npx prisma generate
-
-# Copy source code
+# Copy source code first
 COPY . .
+
+# Generate Prisma client (after schema is available)
+RUN npx prisma generate
 
 # Build TypeScript
 RUN npm run build
