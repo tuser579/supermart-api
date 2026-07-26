@@ -35,14 +35,35 @@ app.use(rateLimiter_middleware_1.globalRateLimiter);
 app.use(express_1.default.json({ limit: '10mb' }));
 app.use(express_1.default.urlencoded({ extended: true }));
 app.use((0, morgan_1.default)(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
-// ─── Health Check ──────────────────────────────────────────────────
+// ─── Health Check & Debug ──────────────────────────────────────────
 app.get('/health', (_req, res) => {
     res.status(200).json({
         success: true,
         message: 'Supermart API is running',
         environment: process.env.NODE_ENV,
+        version: require('../package.json').version,
         timestamp: new Date().toISOString(),
     });
+});
+app.get('/debug-routes', (_req, res) => {
+    const routes = [];
+    app._router.stack.forEach((middleware) => {
+        if (middleware.route) {
+            routes.push({ path: middleware.route.path, methods: middleware.route.methods });
+        }
+        else if (middleware.name === 'router') {
+            middleware.handle.stack.forEach((handler) => {
+                if (handler.route) {
+                    routes.push({
+                        prefix: middleware.regexp.toString(),
+                        path: handler.route.path,
+                        methods: handler.route.methods,
+                    });
+                }
+            });
+        }
+    });
+    res.status(200).json({ success: true, count: routes.length, routes });
 });
 // ─── API Routes ────────────────────────────────────────────────────
 const API_PREFIX = '/api/v1';
