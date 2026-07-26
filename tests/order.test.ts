@@ -219,4 +219,154 @@ describe('Order & Cart Flow Integration Tests', () => {
     expect(res.body.data.returnReason).toBe(returnPayload.reason);
     expect(res.body.data.returnDetails).toBe(returnPayload.details);
   });
+
+  it('8. Should return Admin Quick Options summary including assigned orders & cancel options', async () => {
+    const adminLoginRes = await request(app).post('/api/v1/auth/login').send({
+      email: 'admin@supermart.com',
+      password: 'Admin@123',
+    });
+    const adminToken = adminLoginRes.body.data.tokens.accessToken;
+
+    const res = await request(app)
+      .get('/api/v1/admin/quick-options')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data.assignedOrdersOptions).toBeDefined();
+    expect(res.body.data.orderCancelOptions).toBeDefined();
+    expect(res.body.data.quickActions).toBeDefined();
+  });
+
+  it('9. Should allow Admin to cancel an active order via quick cancel endpoint, restoring stock', async () => {
+    const adminLoginRes = await request(app).post('/api/v1/auth/login').send({
+      email: 'admin@supermart.com',
+      password: 'Admin@123',
+    });
+    const adminToken = adminLoginRes.body.data.tokens.accessToken;
+
+    // Create a new order to test cancellation
+    const orderPayload = {
+      deliveryAddress: {
+        fullName: 'Cancel Test User',
+        phone: '+8801999999999',
+        addressLine1: 'House 99, Road 1',
+        city: 'Dhaka',
+        area: 'Gulshan',
+      },
+      paymentMethod: 'COD',
+      items: [{ productId: seedProductId, quantity: 1 }],
+    };
+
+    const newOrderRes = await request(app)
+      .post('/api/v1/orders')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send(orderPayload);
+
+    const cancelOrderId = newOrderRes.body.data.id;
+
+    // Cancel order as admin
+    const cancelRes = await request(app)
+      .post(`/api/v1/admin/orders/${cancelOrderId}/cancel`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ reason: 'Out of stock items' });
+
+    expect(cancelRes.statusCode).toBe(200);
+    expect(cancelRes.body.success).toBe(true);
+    expect(cancelRes.body.data.status).toBe('CANCELLED');
+    expect(cancelRes.body.data.cancellationReason).toBe('Out of stock items');
+  });
+
+  it('10. Should filter orders by assigned staff status', async () => {
+    const adminLoginRes = await request(app).post('/api/v1/auth/login').send({
+      email: 'admin@supermart.com',
+      password: 'Admin@123',
+    });
+    const adminToken = adminLoginRes.body.data.tokens.accessToken;
+
+    const res = await request(app)
+      .get('/api/v1/admin/orders/assigned')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(res.statusCode).toBe(200);
+    expect(res.body.success).toBe(true);
+    expect(Array.isArray(res.body.data)).toBe(true);
+  });
+
+  it('11. Should retrieve out of stock products options and allow Admin quick product restocking', async () => {
+    const adminLoginRes = await request(app).post('/api/v1/auth/login').send({
+      email: 'admin@supermart.com',
+      password: 'Admin@123',
+    });
+    const adminToken = adminLoginRes.body.data.tokens.accessToken;
+
+    const quickRes = await request(app)
+      .get('/api/v1/admin/quick-options')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(quickRes.statusCode).toBe(200);
+    expect(quickRes.body.data.outOfStockOptions).toBeDefined();
+
+    const restockRes = await request(app)
+      .patch(`/api/v1/admin/products/${seedProductId}/restock`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ addStock: 50 });
+
+    expect(restockRes.statusCode).toBe(200);
+    expect(restockRes.body.success).toBe(true);
+    expect(restockRes.body.data.stock).toBeGreaterThanOrEqual(50);
+  });
+
+  it('12. Should allow Admin to list, create, edit, and delete products via Admin routes', async () => {
+    const adminLoginRes = await request(app).post('/api/v1/auth/login').send({
+      email: 'admin@supermart.com',
+      password: 'Admin@123',
+    });
+    const adminToken = adminLoginRes.body.data.tokens.accessToken;
+
+    // 1. Create product as Admin
+    const createRes = await request(app)
+      .post('/api/v1/admin/products')
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({
+        name: 'Admin Special Organic Milk (1L)',
+        price: 90,
+        category: 'Dairy',
+        stock: 30,
+        images: ['https://example.com/milk.jpg'],
+      });
+
+    expect(createRes.statusCode).toBe(201);
+    expect(createRes.body.success).toBe(true);
+    const newProdId = createRes.body.data.id;
+
+    // 2. Edit product as Admin
+    const editRes = await request(app)
+      .put(`/api/v1/admin/products/${newProdId}`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ price: 85, stock: 40 });
+
+    expect(editRes.statusCode).toBe(200);
+    expect(editRes.body.data.price).toBe(85);
+    expect(editRes.body.data.stock).toBe(40);
+
+    // 3. List products as Admin
+    const listRes = await request(app)
+      .get('/api/v1/admin/products')
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(listRes.statusCode).toBe(200);
+    expect(Array.isArray(listRes.body.data)).toBe(true);
+
+    // 4. Delete product as Admin
+    const deleteRes = await request(app)
+      .delete(`/api/v1/admin/products/${newProdId}`)
+      .set('Authorization', `Bearer ${adminToken}`);
+
+    expect(deleteRes.statusCode).toBe(200);
+    expect(deleteRes.body.success).toBe(true);
+  });
 });
+
+
+

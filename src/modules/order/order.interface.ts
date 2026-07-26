@@ -41,4 +41,7 @@ export interface IOrderQueryParams {
   limit?: number;
   status?: string;
   userId?: string;
+  staffId?: string;
+  assigned?: 'true' | 'false' | boolean;
 }
+

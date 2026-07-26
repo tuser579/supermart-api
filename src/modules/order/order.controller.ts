@@ -46,6 +46,7 @@ export const orderController = {
     const order = await orderService.cancelOrder(
       req.params.id as string,
       req.user!.userId,
+      req.user!.role,
       req.body.reason
     );
     res.status(200).json(ApiResponse.success('Order cancelled successfully', order));

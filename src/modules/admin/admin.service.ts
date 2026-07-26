@@ -1,5 +1,7 @@
 import { prisma } from '../../shared/config/database.config';
 import { ApiError } from '../../shared/utils/ApiError';
+import { orderService } from '../order/order.service';
+import { productService } from '../product/product.service';
 
 export const adminService = {
   getDashboardStats: async () => {
@@ -184,4 +186,227 @@ export const adminService = {
       isAvailable: s.isAvailable,
     }));
   },
+
+  getQuickOptions: async () => {
+    const [
+      assignedOrdersCount,
+      unassignedOrdersCount,
+      cancellableOrdersCount,
+      totalCancelledCount,
+      availableStaffCount,
+      recentAssignedOrders,
+      recentCancelledOrders,
+      staffMembers,
+      outOfStockCount,
+      lowStockCount,
+      outOfStockProducts,
+      lowStockProducts,
+    ] = await prisma.$transaction([
+      prisma.order.count({ where: { assignedStaffId: { not: null } } }),
+      prisma.order.count({ where: { assignedStaffId: null, status: { in: ['PENDING', 'CONFIRMED'] } } }),
+      prisma.order.count({ where: { status: { in: ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED'] } } }),
+      prisma.order.count({ where: { status: 'CANCELLED' } }),
+      prisma.staff.count({ where: { isAvailable: true } }),
+      prisma.order.findMany({
+        where: { assignedStaffId: { not: null } },
+        take: 5,
+        orderBy: { updatedAt: 'desc' },
+        select: {
+          id: true,
+          orderId: true,
+          status: true,
+          totalAmount: true,
+          assignedStaff: { select: { id: true, staffId: true, position: true, user: { select: { name: true, phone: true } } } },
+          user: { select: { name: true, phone: true } },
+          updatedAt: true,
+        },
+      }),
+      prisma.order.findMany({
+        where: { status: 'CANCELLED' },
+        take: 5,
+        orderBy: { updatedAt: 'desc' },
+        select: {
+          id: true,
+          orderId: true,
+          totalAmount: true,
+          cancellationReason: true,
+          user: { select: { name: true, email: true } },
+          updatedAt: true,
+        },
+      }),
+      prisma.staff.findMany({
+        select: {
+          id: true,
+          staffId: true,
+          isAvailable: true,
+          user: { select: { name: true } },
+          _count: { select: { deliveries: { where: { status: { notIn: ['DELIVERED', 'CANCELLED', 'RETURNED'] } } } } },
+        },
+      }),
+      prisma.product.count({ where: { isActive: true, stock: 0 } }),
+      prisma.product.count({ where: { isActive: true, stock: { gt: 0, lte: 10 } } }),
+      prisma.product.findMany({
+        where: { isActive: true, stock: 0 },
+        take: 5,
+        orderBy: { updatedAt: 'desc' },
+        select: { id: true, name: true, price: true, category: true, stock: true, images: true, updatedAt: true },
+      }),
+      prisma.product.findMany({
+        where: { isActive: true, stock: { gt: 0, lte: 10 } },
+        take: 5,
+        orderBy: { stock: 'asc' },
+        select: { id: true, name: true, price: true, category: true, stock: true, images: true, updatedAt: true },
+      }),
+    ]);
+
+    return {
+      assignedOrdersOptions: {
+        totalAssignedOrders: assignedOrdersCount,
+        unassignedPendingOrders: unassignedOrdersCount,
+        availableDeliveryStaff: availableStaffCount,
+        recentAssignedOrders,
+        staffWorkloadSummary: staffMembers.map((s) => ({
+          staffId: s.id,
+          code: s.staffId,
+          name: s.user.name,
+          isAvailable: s.isAvailable,
+          activeAssignedCount: s._count.deliveries,
+        })),
+      },
+      orderCancelOptions: {
+        cancellableOrdersCount,
+        totalCancelledCount,
+        recentCancelledOrders,
+        quickCancelEligibleStatuses: ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED'],
+      },
+      outOfStockOptions: {
+        totalOutOfStock: outOfStockCount,
+        totalLowStock: lowStockCount,
+        recentOutOfStockProducts: outOfStockProducts,
+        recentLowStockProducts: lowStockProducts,
+      },
+      quickActions: [
+        { action: 'ASSIGN_STAFF', method: 'POST', endpoint: '/api/v1/orders/:id/assign' },
+        { action: 'VIEW_ASSIGNED_ORDERS', method: 'GET', endpoint: '/api/v1/admin/orders/assigned' },
+        { action: 'CANCEL_ORDER', method: 'POST', endpoint: '/api/v1/admin/orders/:id/cancel' },
+        { action: 'VIEW_OUT_OF_STOCK', method: 'GET', endpoint: '/api/v1/admin/products/out-of-stock' },
+        { action: 'RESTOCK_PRODUCT', method: 'PATCH', endpoint: '/api/v1/admin/products/:id/restock' },
+        { action: 'LIST_PRODUCTS', method: 'GET', endpoint: '/api/v1/admin/products' },
+        { action: 'CREATE_PRODUCT', method: 'POST', endpoint: '/api/v1/admin/products' },
+        { action: 'EDIT_PRODUCT', method: 'PUT', endpoint: '/api/v1/admin/products/:id' },
+        { action: 'DELETE_PRODUCT', method: 'DELETE', endpoint: '/api/v1/admin/products/:id' },
+      ],
+    };
+  },
+
+  getAssignedOrders: async (params: any = {}) => {
+    const { page = 1, limit = 20, staffId } = params;
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const where: any = { assignedStaffId: staffId ? staffId : { not: null } };
+
+    const [orders, total] = await prisma.$transaction([
+      prisma.order.findMany({
+        where,
+        skip,
+        take: Number(limit),
+        orderBy: { updatedAt: 'desc' },
+        include: {
+          assignedStaff: {
+            include: { user: { select: { name: true, phone: true, email: true } } },
+          },
+          user: { select: { id: true, name: true, email: true, phone: true } },
+          items: {
+            include: { product: { select: { id: true, name: true, images: true } } },
+          },
+        },
+      }),
+      prisma.order.count({ where }),
+    ]);
+
+    return { orders, total, page: Number(page), limit: Number(limit) };
+  },
+
+  cancelOrderAsAdmin: async (orderId: string, adminId: string, reason?: string) => {
+    return orderService.cancelOrder(orderId, adminId, 'ADMIN', reason);
+  },
+
+  getOutOfStockProducts: async (params: any = {}) => {
+    const { page = 1, limit = 20, status = 'all' } = params;
+    const skip = (Number(page) - 1) * Number(limit);
+
+    const where: any = { isActive: true };
+    if (status === 'out_of_stock') {
+      where.stock = 0;
+    } else if (status === 'low_stock') {
+      where.stock = { gt: 0, lte: 10 };
+    } else {
+      where.stock = { lte: 10 };
+    }
+
+    const [products, total] = await prisma.$transaction([
+      prisma.product.findMany({
+        where,
+        skip,
+        take: Number(limit),
+        orderBy: { stock: 'asc' },
+        select: {
+          id: true,
+          name: true,
+          price: true,
+          discountPrice: true,
+          category: true,
+          brand: true,
+          stock: true,
+          images: true,
+          updatedAt: true,
+        },
+      }),
+      prisma.product.count({ where }),
+    ]);
+
+    return { products, total, page: Number(page), limit: Number(limit) };
+  },
+
+  restockProduct: async (productId: string, stock?: number, addStock?: number) => {
+    const product = await prisma.product.findUnique({ where: { id: productId } });
+    if (!product) throw ApiError.notFound('Product not found');
+
+    let newStock = product.stock;
+    if (stock !== undefined) {
+      newStock = stock;
+    } else if (addStock !== undefined) {
+      newStock = product.stock + addStock;
+    }
+
+    return prisma.product.update({
+      where: { id: productId },
+      data: { stock: Math.max(0, newStock) },
+      select: {
+        id: true,
+        name: true,
+        price: true,
+        category: true,
+        stock: true,
+        updatedAt: true,
+      },
+    });
+  },
+
+  getAllProductsForAdmin: async (params: any = {}) => {
+    return productService.getAllProducts({ ...params, includeInactive: true });
+  },
+
+  createProductAsAdmin: async (dto: any, adminId: string) => {
+    return productService.createProduct(dto, adminId);
+  },
+
+  updateProductAsAdmin: async (productId: string, dto: any) => {
+    return productService.updateProduct(productId, dto);
+  },
+
+  deleteProductAsAdmin: async (productId: string) => {
+    return productService.deleteProduct(productId);
+  },
 };
+

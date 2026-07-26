@@ -45,10 +45,10 @@ router.post(
   orderController.returnOrder
 );
 
-// POST /api/v1/orders/:id/cancel — USER
+// POST /api/v1/orders/:id/cancel — USER / ADMIN
 router.post(
   '/:id/cancel',
-  requireRole('USER'),
+  requireRole('USER', 'ADMIN'),
   validate(z.object({ reason: z.string().max(500).optional() })),
   orderController.cancelOrder
 );

@@ -23,8 +23,21 @@ export const productQuerySchema = z.object({
   sortBy: z.enum(['price', 'rating', 'createdAt', 'name']).default('createdAt'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
   inStock: z.coerce.boolean().optional(),
+  outOfStock: z.enum(['true', 'false']).optional(),
+  lowStock: z.enum(['true', 'false']).optional(),
+  includeInactive: z.enum(['true', 'false']).optional(),
 });
+
+export const restockProductSchema = z
+  .object({
+    stock: z.number().int().nonnegative().optional(),
+    addStock: z.number().int().positive().optional(),
+  })
+  .refine((data) => data.stock !== undefined || data.addStock !== undefined, {
+    message: 'Either stock or addStock must be provided',
+  });
 
 export type CreateProductInput = z.infer<typeof createProductSchema>;
 export type UpdateProductInput = z.infer<typeof updateProductSchema>;
 export type ProductQueryInput = z.infer<typeof productQuerySchema>;
+export type RestockProductInput = z.infer<typeof restockProductSchema>;

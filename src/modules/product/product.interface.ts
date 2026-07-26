@@ -21,6 +21,14 @@ export interface IProductQueryParams {
   sortBy?: 'price' | 'rating' | 'createdAt' | 'name';
   sortOrder?: 'asc' | 'desc';
   inStock?: boolean;
+  outOfStock?: boolean | 'true' | 'false';
+  lowStock?: boolean | 'true' | 'false';
+  includeInactive?: boolean | 'true' | 'false';
+}
+
+export interface IRestockProductDTO {
+  stock?: number;
+  addStock?: number;
 }
 
 export interface IProductResponse {

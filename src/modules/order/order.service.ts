@@ -162,12 +162,26 @@ export const orderService = {
   },
 
   getOrders: async (userId: string, role: string, params: IOrderQueryParams) => {
-    const { page = 1, limit = 20, status } = params;
+    const { page = 1, limit = 20, status, staffId, assigned } = params;
     const skip = (page - 1) * limit;
 
     const where: any = {};
     if (status) where.status = status;
-    if (role !== 'ADMIN') where.userId = userId; // Users only see their own orders
+    if (staffId) where.assignedStaffId = staffId;
+    if (assigned === 'true' || (assigned as any) === true) {
+      where.assignedStaffId = { not: null };
+    } else if (assigned === 'false' || (assigned as any) === false) {
+      where.assignedStaffId = null;
+    }
+
+    if (role === 'STAFF' && !staffId) {
+      const staffMember = await prisma.staff.findUnique({ where: { userId } });
+      if (staffMember) {
+        where.assignedStaffId = staffMember.id;
+      }
+    } else if (role !== 'ADMIN' && role !== 'STAFF') {
+      where.userId = userId;
+    }
 
     const [orders, total] = await prisma.$transaction([
       prisma.order.findMany({
@@ -319,17 +333,26 @@ export const orderService = {
     return updatedOrder;
   },
 
-  cancelOrder: async (orderId: string, userId: string, reason?: string) => {
+  cancelOrder: async (orderId: string, userId: string, role: string = 'USER', reason?: string) => {
     const order = await prisma.order.findUnique({ where: { id: orderId } });
     if (!order) throw ApiError.notFound('Order not found');
-    if (order.userId !== userId) throw ApiError.forbidden('Access denied');
-    if (order.status !== 'PENDING' && order.status !== 'CONFIRMED') {
-      throw ApiError.badRequest('Order cannot be cancelled at this stage');
+
+    if (role === 'ADMIN') {
+      if (order.status === 'DELIVERED' || order.status === 'CANCELLED' || order.status === 'RETURNED') {
+        throw ApiError.badRequest(`Order cannot be cancelled as it is already ${order.status}`);
+      }
+    } else {
+      if (order.userId !== userId) throw ApiError.forbidden('Access denied');
+      if (order.status !== 'PENDING' && order.status !== 'CONFIRMED') {
+        throw ApiError.badRequest('Order cannot be cancelled at this stage');
+      }
     }
+
+    const cancelReasonText = reason || (role === 'ADMIN' ? 'Cancelled by admin' : 'Cancelled by user');
 
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
-      data: { status: 'CANCELLED', cancellationReason: reason },
+      data: { status: 'CANCELLED', cancellationReason: cancelReasonText },
     });
 
     // Restore stock
@@ -342,6 +365,15 @@ export const orderService = {
         });
       }
     } catch (e) {}
+
+    // Send notification to customer
+    await notificationService.create({
+      userId: order.userId,
+      title: 'Order Cancelled ❌',
+      message: `Your order ${order.orderId} has been cancelled. Reason: ${cancelReasonText}`,
+      type: 'ORDER',
+      data: { orderId: order.id, status: 'CANCELLED' },
+    });
 
     return updatedOrder;
   },

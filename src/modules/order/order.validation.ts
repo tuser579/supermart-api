@@ -68,6 +68,8 @@ export const orderQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
   status: z.enum(['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'RETURN_REQUESTED', 'RETURNED']).optional(),
+  staffId: z.string().optional(),
+  assigned: z.enum(['true', 'false']).optional(),
 });
 
 export const payOrderSchema = z.object({

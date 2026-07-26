@@ -447,3 +447,143 @@ Error responses follow this format:
   "data": null
 }
 ```
+
+---
+
+## 10. Admin Quick Options (`/api/v1/admin` & `/api/v1/orders`)
+*Requires Authentication Header: `Bearer <token>` with `ADMIN` role*
+
+### Get Admin Quick Options
+- **Endpoint**: `GET /api/v1/admin/quick-options`
+- **Response**:
+```json
+{
+  "success": true,
+  "message": "Admin quick options retrieved successfully",
+  "data": {
+    "assignedOrdersOptions": {
+      "totalAssignedOrders": 5,
+      "unassignedPendingOrders": 2,
+      "availableDeliveryStaff": 3,
+      "recentAssignedOrders": [ ... ],
+      "staffWorkloadSummary": [ ... ]
+    },
+    "orderCancelOptions": {
+      "cancellableOrdersCount": 8,
+      "totalCancelledCount": 4,
+      "recentCancelledOrders": [ ... ],
+      "quickCancelEligibleStatuses": ["PENDING", "CONFIRMED", "PROCESSING", "SHIPPED"]
+    },
+    "outOfStockOptions": {
+      "totalOutOfStock": 3,
+      "totalLowStock": 5,
+      "recentOutOfStockProducts": [ ... ],
+      "recentLowStockProducts": [ ... ]
+    },
+    "quickActions": [ ... ]
+  }
+}
+```
+
+### Get Staff Assigned Orders
+- **Endpoint**: `GET /api/v1/admin/orders/assigned`
+- **Query Params**: `staffId` (optional), `page` (default 1), `limit` (default 20)
+- **Response**: Paginated list of staff-assigned orders.
+
+### Quick Order Cancellation (Admin)
+- **Endpoint**: `POST /api/v1/admin/orders/:id/cancel` or `POST /api/v1/orders/:id/cancel`
+- **Request Body**: `{ "reason": "Out of stock items / Admin decision" }`
+- **Response**:
+```json
+{
+  "success": true,
+  "message": "Order cancelled by admin successfully",
+  "data": {
+    "id": "uuid",
+    "orderId": "SM-...",
+    "status": "CANCELLED",
+    "cancellationReason": "Out of stock items / Admin decision"
+  }
+}
+```
+
+### Get Out of Stock / Low Stock Products
+- **Endpoint**: `GET /api/v1/admin/products/out-of-stock`
+- **Query Params**: `status` (`out_of_stock` | `low_stock` | `all`), `page` (default 1), `limit` (default 20)
+- **Response**: Paginated list of out-of-stock or low-stock products.
+
+### Quick Product Restock (Admin)
+- **Endpoint**: `PATCH /api/v1/admin/products/:id/restock`
+- **Request Body**: `{ "addStock": 50 }` or `{ "stock": 100 }`
+- **Response**:
+```json
+{
+  "success": true,
+  "message": "Product restocked successfully",
+  "data": {
+    "id": "uuid",
+    "name": "Fresh Carrot (500g)",
+    "price": 50,
+    "stock": 150
+  }
+}
+```
+
+### Filter Orders by Staff / Assignment
+- **Endpoint**: `GET /api/v1/orders?staffId=<staffId>&assigned=true`
+- **Response**: List of orders matching assignment parameters.
+
+### Get Admin Products List (Includes Active & Inactive)
+- **Endpoint**: `GET /api/v1/admin/products`
+- **Query Params**: `search`, `category`, `minPrice`, `maxPrice`, `inStock`, `outOfStock`, `lowStock`, `includeInactive` (default true), `page` (default 1), `limit` (default 20)
+- **Response**: Paginated list of products.
+
+### Add Product (Admin)
+- **Endpoint**: `POST /api/v1/admin/products`
+- **Request Body**:
+```json
+{
+  "name": "Fresh Organic Apples (1kg)",
+  "description": "Crisp and juicy red apples from organic orchards.",
+  "price": 180,
+  "discountPrice": 160,
+  "category": "Fruits",
+  "brand": "Supermart Organics",
+  "stock": 50,
+  "images": ["https://example.com/apples.jpg"]
+}
+```
+- **Response**:
+```json
+{
+  "success": true,
+  "message": "Product created successfully by admin",
+  "data": { ...created product object... }
+}
+```
+
+### Edit Product (Admin)
+- **Endpoint**: `PUT /api/v1/admin/products/:id`
+- **Request Body**: Partial product object (e.g. `{ "price": 170, "stock": 60 }`)
+- **Response**:
+```json
+{
+  "success": true,
+  "message": "Product updated successfully by admin",
+  "data": { ...updated product object... }
+}
+```
+
+### Delete / Deactivate Product (Admin)
+- **Endpoint**: `DELETE /api/v1/admin/products/:id`
+- **Response**:
+```json
+{
+  "success": true,
+  "message": "Product deleted successfully by admin",
+  "data": null
+}
+```
+
+
+

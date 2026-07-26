@@ -21,12 +21,20 @@ export const productService = {
       sortBy = 'createdAt',
       sortOrder = 'desc',
       inStock,
+      outOfStock,
+      lowStock,
+      includeInactive,
     } = params;
 
     const skip = (page - 1) * limit;
 
     // Build filter
-    const where: any = { isActive: true };
+    const where: any = {};
+    if (includeInactive === 'true' || (includeInactive as any) === true) {
+      // Include both active and inactive products
+    } else {
+      where.isActive = true;
+    }
 
     if (search) {
       where.OR = [
@@ -41,7 +49,11 @@ export const productService = {
       if (minPrice !== undefined) where.price.gte = minPrice;
       if (maxPrice !== undefined) where.price.lte = maxPrice;
     }
-    if (inStock !== undefined) {
+    if (outOfStock === 'true' || (outOfStock as any) === true) {
+      where.stock = 0;
+    } else if (lowStock === 'true' || (lowStock as any) === true) {
+      where.stock = { gt: 0, lte: 10 };
+    } else if (inStock !== undefined) {
       where.stock = inStock ? { gt: 0 } : { equals: 0 };
     }
 
