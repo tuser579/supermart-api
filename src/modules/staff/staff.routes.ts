@@ -48,4 +48,7 @@ router.patch(
   staffController.updateAvailability
 );
 
+// GET /api/v1/staff/quick-options — STAFF action checking & dashboard summary
+router.get('/quick-options', requireRole('STAFF'), staffController.getQuickOptions);
+
 export default router;

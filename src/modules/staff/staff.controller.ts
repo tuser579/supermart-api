@@ -50,4 +50,10 @@ export const staffController = {
     const staff = await staffService.updateAvailability(req.user!.userId, req.body.isAvailable);
     res.status(200).json(ApiResponse.success('Availability updated', staff));
   }),
+
+  getQuickOptions: asyncHandler(async (req: Request, res: Response) => {
+    const quickOptions = await staffService.getStaffQuickOptions(req.user!.userId);
+    res.status(200).json(ApiResponse.success('Staff quick options retrieved successfully', quickOptions));
+  }),
 };
+

@@ -270,6 +270,16 @@ export const orderService = {
     const updateData: any = { status: dto.status };
     if (dto.status === 'DELIVERED') {
       updateData.deliveredAt = new Date();
+      if (order.status !== 'DELIVERED' && order.assignedStaffId) {
+        const deliveryEarning = order.deliveryCharge > 0 ? order.deliveryCharge : 50;
+        await prisma.staff.update({
+          where: { id: order.assignedStaffId },
+          data: {
+            totalDeliveries: { increment: 1 },
+            earnings: { increment: deliveryEarning },
+          },
+        }).catch(() => {});
+      }
     }
     if (dto.status === 'CANCELLED' || dto.status === 'RETURNED') {
       if (dto.status === 'CANCELLED') updateData.cancellationReason = dto.cancellationReason;
