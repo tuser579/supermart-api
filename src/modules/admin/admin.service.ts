@@ -144,7 +144,12 @@ export const adminService = {
       prisma.user.count({ where }),
     ]);
 
-    return { users, total, page, limit };
+    const formattedUsers = users.map((u) => ({
+      ...u,
+      avatar: u.profileImage,
+    }));
+
+    return { users: formattedUsers, total, page, limit };
   },
 
   toggleUserStatus: async (userId: string) => {
