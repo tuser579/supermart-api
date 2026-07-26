@@ -85,7 +85,16 @@ Error responses follow this format:
 
 ### Update Profile
 - **Endpoint**: `PUT /api/v1/users/profile`
-- **Request Body**: `{ "firstName": "Jane", "lastName": "Doe", "phone": "0987654321" }`
+- **Request Body**:
+```json
+{
+  "name": "Alice Customer",
+  "phone": "+8801700000003",
+  "email": "user@supermart.com",
+  "profileImage": "https://example.com/photo.jpg"
+}
+```
+*(Note: `avatar` or `photo` can also be used in place of `profileImage` for photo uploads / profile picture updates)*
 - **Response**:
 ```json
 {
@@ -93,9 +102,16 @@ Error responses follow this format:
   "message": "Profile updated successfully",
   "data": {
     "id": "uuid",
-    "firstName": "Jane",
-    "lastName": "Doe",
-    // ...other updated fields
+    "name": "Alice Customer",
+    "email": "user@supermart.com",
+    "phone": "+8801700000003",
+    "role": "USER",
+    "profileImage": "https://example.com/photo.jpg",
+    "avatar": "https://example.com/photo.jpg",
+    "isVerified": true,
+    "isActive": true,
+    "lastLogin": "2026-07-26T20:00:00.000Z",
+    "createdAt": "2026-01-01T00:00:00.000Z"
   }
 }
 ```
@@ -238,7 +254,7 @@ Error responses follow this format:
 *Requires Authentication Header: `Bearer <token>`*
 
 ### Get User Orders
-- **Endpoint**: `GET /api/v1/orders/my-orders`
+- **Endpoint**: `GET /api/v1/orders`
 - **Response**:
 ```json
 {
@@ -302,5 +318,132 @@ Error responses follow this format:
       "isDefault": true
     }
   ]
+}
+```
+
+---
+
+## 7. Products (`/api/v1/products`)
+
+### Get All Products
+- **Endpoint**: `GET /api/v1/products`
+- **Response**:
+```json
+{
+  "success": true,
+  "message": "Products retrieved successfully",
+  "data": [
+    {
+      "id": "uuid",
+      "name": "Apple",
+      "price": 1.99,
+      "description": "Fresh apple",
+      "stock": 100,
+      "images": ["url"]
+    }
+  ],
+  "meta": { "page": 1, "limit": 20, "total": 50, "totalPages": 3 }
+}
+```
+
+### Get Product by ID
+- **Endpoint**: `GET /api/v1/products/:id`
+- **Response**:
+```json
+{
+  "success": true,
+  "message": "Product retrieved successfully",
+  "data": { ...product details... }
+}
+```
+
+---
+
+## 8. System (`/health`)
+
+### API Health Check
+- **Endpoint**: `GET /health`
+- **Response**:
+```json
+{
+  "success": true,
+  "message": "Supermart API is running",
+  "environment": "production",
+  "version": "1.0.4",
+  "timestamp": "2026-07-26T20:25:00.000Z"
+}
+```
+
+### Debug Routes (If Enabled)
+- **Endpoint**: `GET /debug-routes`
+- **Response**: Lists all registered routes in the application.
+
+---
+
+## 9. Payments (`/api/v1/payments`)
+*Requires Authentication Header: `Bearer <token>`*
+
+### Process Bank Transfer
+- **Endpoint**: `POST /api/v1/payments/bank`
+- **Request Body**: `{ "orderId": "uuid", "amount": 100.0, "accountDetails": "..." }`
+- **Response**:
+```json
+{
+  "success": true,
+  "message": "Bank transfer processed successfully",
+  "data": { ...payment details... }
+}
+```
+
+### Process Card Payment
+- **Endpoint**: `POST /api/v1/payments/card`
+- **Request Body**: `{ "orderId": "uuid", "amount": 100.0, "cardToken": "tok_..." }`
+- **Response**:
+```json
+{
+  "success": true,
+  "message": "Card payment processed successfully",
+  "data": { ...payment details... }
+}
+```
+
+### Get Saved Methods
+- **Endpoint**: `GET /api/v1/payments/methods`
+- **Response**:
+```json
+{
+  "success": true,
+  "message": "Saved payment methods retrieved",
+  "data": [
+    {
+      "id": "uuid",
+      "type": "CARD",
+      "last4": "4242",
+      "brand": "Visa"
+    }
+  ]
+}
+```
+
+### Add Saved Method
+- **Endpoint**: `POST /api/v1/payments/methods`
+- **Request Body**: `{ "type": "CARD", "details": { ... } }`
+- **Response**:
+```json
+{
+  "success": true,
+  "message": "Payment method saved",
+  "data": { ...saved method... }
+}
+```
+
+### Delete Saved Method
+- **Endpoint**: `DELETE /api/v1/payments/methods/:id`
+- **Response**:
+```json
+{
+  "success": true,
+  "message": "Payment method deleted",
+  "data": null
 }
 ```

@@ -24,25 +24,53 @@ export const userService = {
     });
 
     if (!user) throw ApiError.notFound('User not found');
-    return user;
+    return {
+      ...user,
+      avatar: user.profileImage,
+    };
   },
 
   updateProfile: async (userId: string, dto: IUpdateProfileDTO): Promise<IUserProfile> => {
+    const profileImage = dto.profileImage ?? dto.avatar ?? dto.photo;
+
+    // Check email uniqueness if changing
+    if (dto.email) {
+      const existingEmail = await prisma.user.findFirst({
+        where: { email: dto.email, NOT: { id: userId } },
+      });
+      if (existingEmail) throw ApiError.conflict('Email address is already in use');
+    }
+
     // Check phone uniqueness if changing
     if (dto.phone) {
-      const existing = await prisma.user.findFirst({
+      const existingPhone = await prisma.user.findFirst({
         where: { phone: dto.phone, NOT: { id: userId } },
       });
-      if (existing) throw ApiError.conflict('Phone number is already in use');
+      if (existingPhone) throw ApiError.conflict('Phone number is already in use');
     }
+
+    const updateData: {
+      name?: string;
+      email?: string;
+      phone?: string;
+      profileImage?: string;
+    } = {};
+
+    if (dto.name !== undefined) updateData.name = dto.name;
+    if (dto.email !== undefined) updateData.email = dto.email;
+    if (dto.phone !== undefined) updateData.phone = dto.phone;
+    if (profileImage !== undefined) updateData.profileImage = profileImage;
 
     const user = await prisma.user.update({
       where: { id: userId },
-      data: dto,
+      data: updateData,
       select: userSelectFields,
     });
 
-    return user;
+    return {
+      ...user,
+      avatar: user.profileImage,
+    };
   },
 
   changePassword: async (userId: string, dto: IChangePasswordDTO): Promise<void> => {
