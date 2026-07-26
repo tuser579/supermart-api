@@ -1,8 +1,8 @@
+[phases.install]
+cmds = ["npm install --omit=dev"]
+
 [phases.build]
-cmds = [
-  "npm install",
-  "npm run build"
-]
+cmds = ["npx prisma generate"]
 
 [start]
 cmd = 'node dist/server.js'
