@@ -1,25 +1,35 @@
-FROM node:20-alpine
+FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Install OpenSSL for Prisma
 RUN apk add --no-cache openssl
 
-# Copy package files and install production dependencies
 COPY package*.json ./
-RUN npm install --omit=dev
+RUN npm install
 
-# Copy Prisma schema and generate client
 COPY src/prisma ./src/prisma/
 RUN npx prisma generate
 
-# Copy pre-built dist (already compiled locally, committed to git)
-COPY dist ./dist
+COPY tsconfig.json ./
+COPY src ./src
+RUN npx tsc --project tsconfig.json
 
-# Create logs directory
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+RUN apk add --no-cache openssl
+
+COPY package*.json ./
+RUN npm install --omit=dev
+
+COPY src/prisma ./src/prisma/
+RUN npx prisma generate
+
+COPY --from=builder /app/dist ./dist
+
 RUN mkdir -p logs
 
-# Environment
 ENV NODE_ENV=production
 ENV PORT=5000
 
