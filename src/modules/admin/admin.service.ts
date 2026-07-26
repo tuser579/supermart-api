@@ -133,6 +133,7 @@ export const adminService = {
           email: true,
           phone: true,
           role: true,
+          profileImage: true,
           isVerified: true,
           isActive: true,
           lastLogin: true,
