@@ -114,7 +114,7 @@ export const paymentController = {
   deleteSavedMethod: async (req: Request, res: Response) => {
     try {
       const userId = (req as any).user.userId;
-      const { id } = req.params;
+      const id = req.params.id as string;
 
       await paymentMethodService.deleteSavedPaymentMethod(userId, id);
       res.status(200).json({ success: true, message: 'Payment method deleted' });

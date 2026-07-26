@@ -30,7 +30,7 @@ export const addToWishlist = async (req: Request, res: Response, next: NextFunct
 export const removeFromWishlist = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = (req as any).user.userId;
-    const { productId } = req.params;
+    const productId = req.params.productId as string;
 
     await wishlistService.removeFromWishlist(userId, productId);
     res.status(200).json({ success: true, message: 'Removed from wishlist' });
