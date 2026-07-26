@@ -7,6 +7,7 @@ import { z } from 'zod';
 const router = Router();
 
 const addItemSchema = z.object({
+  // productId accepts any non-empty string (including seed/custom IDs like 'seed-carrot-(500g)')
   productId: z.string().min(1, 'Invalid product ID'),
   quantity: z.number().int().positive('Quantity must be a positive integer'),
 });

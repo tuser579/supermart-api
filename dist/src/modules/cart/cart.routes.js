@@ -7,6 +7,7 @@ const validation_middleware_1 = require("../../shared/middleware/validation.midd
 const zod_1 = require("zod");
 const router = (0, express_1.Router)();
 const addItemSchema = zod_1.z.object({
+    // productId accepts any non-empty string (including seed/custom IDs like 'seed-carrot-(500g)')
     productId: zod_1.z.string().min(1, 'Invalid product ID'),
     quantity: zod_1.z.number().int().positive('Quantity must be a positive integer'),
 });
