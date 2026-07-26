@@ -11,28 +11,30 @@ exports.addressService = {
         });
     },
     create: async (userId, dto) => {
-        // If this is the first address OR marked as default, clear existing defaults
-        const count = await database_config_1.prisma.address.count({ where: { userId } });
-        const shouldBeDefault = dto.isDefault || count === 0;
-        if (shouldBeDefault) {
-            await database_config_1.prisma.address.updateMany({
-                where: { userId, isDefault: true },
-                data: { isDefault: false },
+        return database_config_1.prisma.$transaction(async (tx) => {
+            // If this is the first address OR marked as default, clear existing defaults
+            const count = await tx.address.count({ where: { userId } });
+            const shouldBeDefault = dto.isDefault || count === 0;
+            if (shouldBeDefault) {
+                await tx.address.updateMany({
+                    where: { userId, isDefault: true },
+                    data: { isDefault: false },
+                });
+            }
+            return tx.address.create({
+                data: {
+                    userId,
+                    label: dto.label,
+                    fullName: dto.fullName,
+                    phone: dto.phone,
+                    addressLine1: dto.addressLine1,
+                    addressLine2: dto.addressLine2,
+                    city: dto.city,
+                    area: dto.area,
+                    postalCode: dto.postalCode,
+                    isDefault: shouldBeDefault,
+                },
             });
-        }
-        return database_config_1.prisma.address.create({
-            data: {
-                userId,
-                label: dto.label,
-                fullName: dto.fullName,
-                phone: dto.phone,
-                addressLine1: dto.addressLine1,
-                addressLine2: dto.addressLine2,
-                city: dto.city,
-                area: dto.area,
-                postalCode: dto.postalCode,
-                isDefault: shouldBeDefault,
-            },
         });
     },
     update: async (userId, addressId, dto) => {

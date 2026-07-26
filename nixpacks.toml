@@ -1,11 +1,7 @@
-[phases.setup]
-nixPkgs = ["nodejs_20", "openssl"]
-
 [phases.build]
 cmds = [
-  "npm ci",
-  "npx prisma generate",
-  "npx tsc --project tsconfig.json"
+  "npm install",
+  "npm run build"
 ]
 
 [start]
