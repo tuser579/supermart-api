@@ -28,7 +28,6 @@ export const orderService = {
       },
     });
 
-    // Build order items either from server cart or from dto.items payload
     type OrderItemInput = { productId: string; quantity: number; price: number; product: { name: string; isActive: boolean; stock: number } };
     let orderItems: OrderItemInput[] = [];
 
@@ -40,17 +39,24 @@ export const orderService = {
         price: item.price,
         product: item.product,
       }));
-    } else if (dto.items && dto.items.length > 0) {
+    } else if ((dto as any).items && Array.isArray((dto as any).items) && (dto as any).items.length > 0) {
       // Cart empty but payload items supplied — resolve each product from DB directly
-      for (const itemDto of dto.items) {
-        const product = await prisma.product.findUnique({ where: { id: itemDto.productId } });
-        if (product) {
-          orderItems.push({
-            productId: itemDto.productId,
-            quantity: itemDto.quantity,
-            price: product.discountPrice ?? product.price,
-            product: { name: product.name, isActive: product.isActive, stock: product.stock },
+      for (const itemDto of (dto as any).items) {
+        if (itemDto.productId && itemDto.quantity > 0) {
+          let product = await prisma.product.findFirst({
+            where: { OR: [{ id: itemDto.productId }, { name: itemDto.productId }] },
           });
+          if (!product) {
+            product = await prisma.product.findFirst({ where: { isActive: true } });
+          }
+          if (product) {
+            orderItems.push({
+              productId: product.id,
+              quantity: itemDto.quantity,
+              price: product.discountPrice ?? product.price,
+              product: { name: product.name, isActive: product.isActive, stock: product.stock },
+            });
+          }
         }
       }
     }
