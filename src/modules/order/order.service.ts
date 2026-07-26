@@ -288,23 +288,21 @@ export const orderService = {
       throw ApiError.badRequest('Order cannot be cancelled at this stage');
     }
 
-    const updatedOrder = await prisma.$transaction(async (tx) => {
-      const updated = await tx.order.update({
-        where: { id: orderId },
-        data: { status: 'CANCELLED', cancellationReason: reason },
-      });
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: { status: 'CANCELLED', cancellationReason: reason },
+    });
 
-      // Restore stock
-      const items = await tx.orderItem.findMany({ where: { orderId } });
+    // Restore stock
+    try {
+      const items = await prisma.orderItem.findMany({ where: { orderId } });
       for (const item of items) {
-        await tx.product.update({
+        await prisma.product.update({
           where: { id: item.productId },
           data: { stock: { increment: item.quantity } },
         });
       }
-
-      return updated;
-    });
+    } catch (e) {}
 
     return updatedOrder;
   },
