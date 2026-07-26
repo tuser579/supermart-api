@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { prisma } from '../../shared/config/database.config';
 import { ApiError } from '../../shared/utils/ApiError';
 import { notificationService } from '../notification/notification.service';
@@ -105,6 +106,7 @@ export const orderService = {
     // Create order
     const newOrder = await prisma.order.create({
       data: {
+        id: crypto.randomUUID(),
         orderId: generateOrderId(),
         userId,
         totalAmount,
@@ -116,6 +118,7 @@ export const orderService = {
         transactionId: dto.transactionId,
         items: {
           create: orderItems.map((item) => ({
+            id: crypto.randomUUID(),
             productId: item.productId,
             quantity: item.quantity,
             price: item.price,

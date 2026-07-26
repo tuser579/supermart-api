@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { prisma } from '../../shared/config/database.config';
 import { jwtConfig } from '../../shared/config/jwt.config';
 import { hashPassword, comparePassword } from '../../shared/utils/hashPassword';
@@ -44,6 +45,7 @@ export const authService = {
     // Create user
     const user = await prisma.user.create({
       data: {
+        id: crypto.randomUUID(),
         name: dto.name,
         email: dto.email,
         phone: dto.phone,

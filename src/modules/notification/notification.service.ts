@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { prisma } from '../../shared/config/database.config';
 import { ApiError } from '../../shared/utils/ApiError';
 import { ICreateNotificationDTO } from './notification.interface';
@@ -6,6 +7,7 @@ export const notificationService = {
   create: async (dto: ICreateNotificationDTO) => {
     return prisma.notification.create({
       data: {
+        id: crypto.randomUUID(),
         userId: dto.userId,
         title: dto.title,
         message: dto.message,
