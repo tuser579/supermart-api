@@ -21,12 +21,9 @@ WORKDIR /app
 RUN apk add --no-cache openssl
 
 COPY package*.json ./
-RUN npm install --omit=dev
-
-COPY src/prisma ./src/prisma/
-RUN npx prisma generate
-
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
+COPY src/prisma ./src/prisma/
 
 RUN mkdir -p logs
 
@@ -36,3 +33,4 @@ ENV PORT=5000
 EXPOSE 5000
 
 CMD ["node", "dist/server.js"]
+
