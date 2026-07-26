@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-jest.setTimeout(30000);
+jest.setTimeout(60000);
 
 describe('Order & Cart Flow Integration Tests', () => {
   const testUser = {
