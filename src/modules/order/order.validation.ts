@@ -61,7 +61,7 @@ export const returnOrderSchema = z.object({
 });
 
 export const assignDeliverySchema = z.object({
-  staffId: z.string().cuid('Invalid staff ID'),
+  staffId: z.string().min(1, 'Invalid staff ID'),
 });
 
 export const orderQuerySchema = z.object({

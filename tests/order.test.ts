@@ -14,7 +14,7 @@ describe('Order & Cart Flow Integration Tests', () => {
     password: 'Password@123',
   };
 
-  const seedProductId = 'seed-carrot-(500g)';
+  const seedProductId = 'a0000000-0000-0000-0000-000000000001';
   let userToken: string;
   let userId: string;
 

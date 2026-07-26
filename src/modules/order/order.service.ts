@@ -320,7 +320,7 @@ export const orderService = {
     const order = await prisma.order.findUnique({ where: { id: orderId } });
     if (!order) throw ApiError.notFound('Order not found');
     if (order.userId !== userId) throw ApiError.forbidden('Access denied');
-    if (!['PENDING', 'CONFIRMED'].includes(order.status)) {
+    if (order.status !== 'PENDING' && order.status !== 'CONFIRMED') {
       throw ApiError.badRequest('Order cannot be cancelled at this stage');
     }
 
