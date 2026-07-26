@@ -57,6 +57,9 @@ router.post('/products', validate(createProductSchema), adminController.createPr
 // PUT /api/v1/admin/products/:id — Edit product
 router.put('/products/:id', validate(updateProductSchema), adminController.updateProduct);
 
+// PATCH /api/v1/admin/products/:id/images — Update product images
+router.patch('/products/:id/images', adminController.updateProductImages);
+
 // DELETE /api/v1/admin/products/:id — Delete/Deactivate product
 router.delete('/products/:id', adminController.deleteProduct);
 

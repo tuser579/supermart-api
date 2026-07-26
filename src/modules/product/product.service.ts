@@ -103,11 +103,26 @@ export const productService = {
     return product;
   },
 
-  updateProduct: async (id: string, dto: IUpdateProductDTO) => {
+  updateProduct: async (id: string, dto: IUpdateProductDTO & { image?: string; imageUrl?: string }) => {
     const product = await prisma.product.findUnique({ where: { id } });
     if (!product) throw ApiError.notFound('Product not found');
 
-    return prisma.product.update({ where: { id }, data: dto });
+    const updateData: any = { ...dto };
+
+    const singleImage = updateData.image || updateData.imageUrl;
+    if (singleImage) {
+      if (Array.isArray(updateData.images) && updateData.images.length > 0) {
+        if (!updateData.images.includes(singleImage)) {
+          updateData.images.unshift(singleImage);
+        }
+      } else {
+        updateData.images = [singleImage];
+      }
+      delete updateData.image;
+      delete updateData.imageUrl;
+    }
+
+    return prisma.product.update({ where: { id }, data: updateData });
   },
 
   deleteProduct: async (id: string) => {

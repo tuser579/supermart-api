@@ -354,14 +354,18 @@ Content-Type: application/json
 }
 ```
 
-### Edit Product
+### Edit Product (Including Image Change)
 - **Endpoint**: `PUT /api/v1/admin/products/:id`
-- **Request Body**: Partial update object
+- **Request Body**: Partial update object (Supports updating `images` array, single `image` URL string, `imageUrl` URL string, `price`, `stock`, `name`, etc.)
 ```json
 {
   "price": 170,
   "stock": 60,
-  "isActive": true
+  "images": [
+    "https://example.com/new-apple-photo-1.jpg",
+    "https://example.com/new-apple-photo-2.jpg"
+  ],
+  "image": "https://example.com/new-apple-main.jpg"
 }
 ```
 - **Response**:
@@ -373,7 +377,36 @@ Content-Type: application/json
     "id": "prod_new_uuid",
     "name": "Fresh Organic Apples (1kg)",
     "price": 170,
-    "stock": 60
+    "stock": 60,
+    "images": [
+      "https://example.com/new-apple-main.jpg",
+      "https://example.com/new-apple-photo-1.jpg",
+      "https://example.com/new-apple-photo-2.jpg"
+    ]
+  }
+}
+```
+
+### Update Product Images (Dedicated Endpoint)
+- **Endpoint**: `PATCH /api/v1/admin/products/:id/images`
+- **Request Body**:
+```json
+{
+  "images": [
+    "https://example.com/image1.jpg",
+    "https://example.com/image2.jpg"
+  ]
+}
+```
+*(Or single image string: `{ "image": "https://example.com/image1.jpg" }`)*
+- **Response**:
+```json
+{
+  "success": true,
+  "message": "Product images updated successfully by admin",
+  "data": {
+    "id": "prod_new_uuid",
+    "images": ["https://example.com/image1.jpg", "https://example.com/image2.jpg"]
   }
 }
 ```

@@ -83,6 +83,12 @@ export const adminController = {
     res.status(200).json(ApiResponse.success('Product updated successfully by admin', product));
   }),
 
+  updateProductImages: asyncHandler(async (req: Request, res: Response) => {
+    const images = req.body.images || req.body.image || req.body.imageUrl;
+    const product = await adminService.updateProductImages(req.params.id as string, images);
+    res.status(200).json(ApiResponse.success('Product images updated successfully by admin', product));
+  }),
+
   deleteProduct: asyncHandler(async (req: Request, res: Response) => {
     await adminService.deleteProductAsAdmin(req.params.id as string);
     res.status(200).json(ApiResponse.success('Product deleted successfully by admin', null));

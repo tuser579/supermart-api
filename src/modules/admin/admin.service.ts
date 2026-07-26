@@ -405,6 +405,11 @@ export const adminService = {
     return productService.updateProduct(productId, dto);
   },
 
+  updateProductImages: async (productId: string, images: string[] | string) => {
+    const imageList = Array.isArray(images) ? images : [images];
+    return productService.updateProduct(productId, { images: imageList });
+  },
+
   deleteProductAsAdmin: async (productId: string) => {
     return productService.deleteProduct(productId);
   },

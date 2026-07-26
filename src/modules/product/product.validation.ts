@@ -11,7 +11,12 @@ export const createProductSchema = z.object({
   images: z.array(z.string().url('Each image must be a valid URL')).min(1, 'At least one image required').max(10),
 });
 
-export const updateProductSchema = createProductSchema.partial();
+export const updateProductSchema = createProductSchema
+  .extend({
+    image: z.string().url('Image must be a valid URL').optional(),
+    imageUrl: z.string().url('Image URL must be a valid URL').optional(),
+  })
+  .partial();
 
 export const productQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
