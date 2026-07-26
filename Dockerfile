@@ -4,22 +4,16 @@ WORKDIR /app
 
 RUN apk add --no-cache openssl
 
-# Install dependencies
+# Install only production dependencies
 COPY package*.json ./
-RUN npm install
+RUN npm install --omit=dev
 
-# Generate Prisma client
+# Copy pre-built dist (compiled TypeScript)
+COPY dist ./dist
+
+# Copy Prisma schema and generate client
 COPY src/prisma ./src/prisma/
 RUN npx prisma generate
-
-# Copy all source and compile TypeScript
-COPY tsconfig.json ./
-COPY server.ts ./
-COPY src ./src
-RUN npx tsc --project tsconfig.json
-
-# Verify build output exists
-RUN ls -la dist/ && echo "✅ Build successful"
 
 # Create logs directory
 RUN mkdir -p logs
