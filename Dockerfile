@@ -1,5 +1,8 @@
 FROM node:20-alpine
 
+# Cache buster to force Railway to do a clean build
+ARG CACHE_BUSTER=2026-07-26T15:40:00
+
 WORKDIR /app
 
 RUN apk add --no-cache openssl
