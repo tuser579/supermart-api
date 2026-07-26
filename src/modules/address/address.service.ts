@@ -11,30 +11,32 @@ export const addressService = {
   },
 
   create: async (userId: string, dto: ICreateAddressDTO) => {
-    // If this is the first address OR marked as default, clear existing defaults
-    const count = await prisma.address.count({ where: { userId } });
-    const shouldBeDefault = dto.isDefault || count === 0;
+    return prisma.$transaction(async (tx) => {
+      // If this is the first address OR marked as default, clear existing defaults
+      const count = await tx.address.count({ where: { userId } });
+      const shouldBeDefault = dto.isDefault || count === 0;
 
-    if (shouldBeDefault) {
-      await prisma.address.updateMany({
-        where: { userId, isDefault: true },
-        data: { isDefault: false },
+      if (shouldBeDefault) {
+        await tx.address.updateMany({
+          where: { userId, isDefault: true },
+          data: { isDefault: false },
+        });
+      }
+
+      return tx.address.create({
+        data: {
+          userId,
+          label: dto.label,
+          fullName: dto.fullName,
+          phone: dto.phone,
+          addressLine1: dto.addressLine1,
+          addressLine2: dto.addressLine2,
+          city: dto.city,
+          area: dto.area,
+          postalCode: dto.postalCode,
+          isDefault: shouldBeDefault,
+        },
       });
-    }
-
-    return prisma.address.create({
-      data: {
-        userId,
-        label: dto.label,
-        fullName: dto.fullName,
-        phone: dto.phone,
-        addressLine1: dto.addressLine1,
-        addressLine2: dto.addressLine2,
-        city: dto.city,
-        area: dto.area,
-        postalCode: dto.postalCode,
-        isDefault: shouldBeDefault,
-      },
     });
   },
 
