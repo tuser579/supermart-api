@@ -233,7 +233,7 @@ export const staffService = {
         prisma.order.count({
           where: {
             assignedStaffId: staff.id,
-            status: { in: ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED'] },
+            status: { in: ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'OUT_FOR_DELIVERY'] },
           },
         }),
         prisma.order.count({
