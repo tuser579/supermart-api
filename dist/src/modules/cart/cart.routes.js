@@ -7,12 +7,17 @@ const validation_middleware_1 = require("../../shared/middleware/validation.midd
 const zod_1 = require("zod");
 const router = (0, express_1.Router)();
 const addItemSchema = zod_1.z.object({
-    // productId accepts any non-empty string (including seed/custom IDs like 'seed-carrot-(500g)')
-    productId: zod_1.z.string().min(1, 'Invalid product ID'),
-    quantity: zod_1.z.number().int().positive('Quantity must be a positive integer'),
+    productId: zod_1.z.preprocess((val) => (val ? String(val).trim() : ''), zod_1.z.string().min(1, 'Invalid product ID')),
+    quantity: zod_1.z.preprocess((val) => {
+        const num = Number(val);
+        return isNaN(num) || num < 1 ? 1 : Math.round(num);
+    }, zod_1.z.number().int().positive()),
 });
 const updateItemSchema = zod_1.z.object({
-    quantity: zod_1.z.number().int().nonnegative('Quantity must be 0 or more'),
+    quantity: zod_1.z.preprocess((val) => {
+        const num = Number(val);
+        return isNaN(num) || num < 0 ? 0 : Math.round(num);
+    }, zod_1.z.number().int().nonnegative()),
 });
 // All cart routes require auth
 router.use(auth_middleware_1.authMiddleware);

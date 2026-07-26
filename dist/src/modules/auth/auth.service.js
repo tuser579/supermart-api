@@ -1,6 +1,10 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.authService = void 0;
+const crypto_1 = __importDefault(require("crypto"));
 const database_config_1 = require("../../shared/config/database.config");
 const jwt_config_1 = require("../../shared/config/jwt.config");
 const hashPassword_1 = require("../../shared/utils/hashPassword");
@@ -33,6 +37,7 @@ exports.authService = {
         // Create user
         const user = await database_config_1.prisma.user.create({
             data: {
+                id: crypto_1.default.randomUUID(),
                 name: dto.name,
                 email: dto.email,
                 phone: dto.phone,

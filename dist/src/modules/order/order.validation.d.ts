@@ -1,12 +1,12 @@
 import { z } from 'zod';
 export declare const createOrderSchema: z.ZodObject<{
     deliveryAddress: z.ZodObject<{
-        fullName: z.ZodString;
-        phone: z.ZodString;
-        addressLine1: z.ZodString;
+        fullName: z.ZodEffects<z.ZodString, string, unknown>;
+        phone: z.ZodEffects<z.ZodString, string, unknown>;
+        addressLine1: z.ZodEffects<z.ZodString, string, unknown>;
         addressLine2: z.ZodOptional<z.ZodString>;
-        city: z.ZodString;
-        area: z.ZodString;
+        city: z.ZodEffects<z.ZodString, string, unknown>;
+        area: z.ZodEffects<z.ZodString, string, unknown>;
         postalCode: z.ZodOptional<z.ZodString>;
     }, "strip", z.ZodTypeAny, {
         phone: string;
@@ -17,27 +17,30 @@ export declare const createOrderSchema: z.ZodObject<{
         addressLine2?: string | undefined;
         postalCode?: string | undefined;
     }, {
-        phone: string;
-        fullName: string;
-        addressLine1: string;
-        city: string;
-        area: string;
+        phone?: unknown;
+        fullName?: unknown;
+        addressLine1?: unknown;
         addressLine2?: string | undefined;
+        city?: unknown;
+        area?: unknown;
         postalCode?: string | undefined;
     }>;
     notes: z.ZodOptional<z.ZodString>;
-    paymentMethod: z.ZodEnum<["COD", "BKASH", "ROCKET", "NOGOD", "BANK_TRANSFER", "CARD"]>;
+    paymentMethod: z.ZodEffects<z.ZodEnum<["COD", "BKASH", "ROCKET", "NOGOD", "BANK_TRANSFER", "CARD"]>, "COD" | "BKASH" | "ROCKET" | "NOGOD" | "BANK_TRANSFER" | "CARD", unknown>;
     transactionId: z.ZodOptional<z.ZodString>;
-    items: z.ZodOptional<z.ZodArray<z.ZodObject<{
-        productId: z.ZodString;
-        quantity: z.ZodNumber;
+    items: z.ZodOptional<z.ZodEffects<z.ZodArray<z.ZodObject<{
+        productId: z.ZodEffects<z.ZodString, string, unknown>;
+        quantity: z.ZodEffects<z.ZodNumber, number, unknown>;
     }, "strip", z.ZodTypeAny, {
         productId: string;
         quantity: number;
     }, {
+        productId?: unknown;
+        quantity?: unknown;
+    }>, "many">, {
         productId: string;
         quantity: number;
-    }>, "many">>;
+    }[], unknown>>;
 }, "strip", z.ZodTypeAny, {
     paymentMethod: "COD" | "BKASH" | "ROCKET" | "NOGOD" | "BANK_TRANSFER" | "CARD";
     deliveryAddress: {
@@ -56,20 +59,17 @@ export declare const createOrderSchema: z.ZodObject<{
     transactionId?: string | undefined;
     notes?: string | undefined;
 }, {
-    paymentMethod: "COD" | "BKASH" | "ROCKET" | "NOGOD" | "BANK_TRANSFER" | "CARD";
     deliveryAddress: {
-        phone: string;
-        fullName: string;
-        addressLine1: string;
-        city: string;
-        area: string;
+        phone?: unknown;
+        fullName?: unknown;
+        addressLine1?: unknown;
         addressLine2?: string | undefined;
+        city?: unknown;
+        area?: unknown;
         postalCode?: string | undefined;
     };
-    items?: {
-        productId: string;
-        quantity: number;
-    }[] | undefined;
+    items?: unknown;
+    paymentMethod?: unknown;
     transactionId?: string | undefined;
     notes?: string | undefined;
 }>;
