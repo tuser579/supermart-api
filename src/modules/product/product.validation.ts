@@ -2,19 +2,29 @@ import { z } from 'zod';
 
 export const createProductSchema = z.object({
   name: z.string().min(2, 'Product name must be at least 2 characters').max(200).trim(),
-  description: z.string().max(2000).trim().optional(),
-  price: z.number().positive('Price must be positive'),
-  discountPrice: z.number().positive().optional(),
+  description: z.preprocess((v) => (v === null ? undefined : v), z.string().max(2000).trim().optional()),
+  price: z.preprocess((v) => Number(v), z.number().positive('Price must be positive')),
+  discountPrice: z.preprocess(
+    (v) => (v === null || v === '' ? undefined : Number(v)),
+    z.number().positive().optional()
+  ),
   category: z.string().min(1, 'Category is required').trim(),
-  brand: z.string().trim().optional(),
-  stock: z.number().int().nonnegative('Stock cannot be negative'),
-  images: z.array(z.string().url('Each image must be a valid URL')).min(1, 'At least one image required').max(10),
+  brand: z.preprocess((v) => (v === null ? undefined : v), z.string().trim().optional()),
+  stock: z.preprocess((v) => Number(v), z.number().int().nonnegative('Stock cannot be negative')),
+  images: z.preprocess(
+    (val) => {
+      if (typeof val === 'string' && val.trim().length > 0) return [val.trim()];
+      if (Array.isArray(val)) return val.filter((item) => typeof item === 'string' && item.trim().length > 0);
+      return ['https://placehold.co/400x300?text=Product'];
+    },
+    z.array(z.string()).min(1, 'At least one image required').max(10)
+  ),
 });
 
 export const updateProductSchema = createProductSchema
   .extend({
-    image: z.string().url('Image must be a valid URL').optional(),
-    imageUrl: z.string().url('Image URL must be a valid URL').optional(),
+    image: z.string().optional(),
+    imageUrl: z.string().optional(),
   })
   .partial();
 
