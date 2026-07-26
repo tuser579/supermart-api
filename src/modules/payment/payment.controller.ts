@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { ApiError } from '../../shared/utils/ApiError';
+import * as paymentMethodService from './payment-method.service';
 
 export const paymentController = {
   processBankTransfer: async (req: Request, res: Response) => {
@@ -70,6 +71,55 @@ export const paymentController = {
       } else {
         res.status(500).json({ success: false, message: 'Internal server error during card payment' });
       }
+    }
+  },
+
+  getSavedMethods: async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).user.userId;
+      const methods = await paymentMethodService.getSavedPaymentMethods(userId);
+      res.status(200).json({ success: true, data: methods });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Error fetching payment methods' });
+    }
+  },
+
+  addSavedMethod: async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).user.userId;
+      const { type, provider, last4, isDefault } = req.body;
+      
+      if (!type || !provider) {
+        throw ApiError.badRequest('Type and provider are required');
+      }
+
+      const newMethod = await paymentMethodService.addSavedPaymentMethod({
+        userId,
+        type,
+        provider,
+        last4,
+        isDefault
+      });
+
+      res.status(201).json({ success: true, data: newMethod, message: 'Payment method saved' });
+    } catch (error) {
+      if (error instanceof ApiError) {
+        res.status(error.statusCode).json({ success: false, message: error.message });
+      } else {
+        res.status(500).json({ success: false, message: 'Error saving payment method' });
+      }
+    }
+  },
+
+  deleteSavedMethod: async (req: Request, res: Response) => {
+    try {
+      const userId = (req as any).user.userId;
+      const { id } = req.params;
+
+      await paymentMethodService.deleteSavedPaymentMethod(userId, id);
+      res.status(200).json({ success: true, message: 'Payment method deleted' });
+    } catch (error) {
+      res.status(500).json({ success: false, message: 'Error deleting payment method' });
     }
   }
 };

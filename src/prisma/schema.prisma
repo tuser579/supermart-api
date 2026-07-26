@@ -33,7 +33,9 @@ model User {
   cart          Cart?
   notifications Notification[]
   products      Product[]
-  addresses     Address[]
+  addresses           Address[]
+  wishlists           Wishlist[]
+  savedPaymentMethods SavedPaymentMethod[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -174,6 +176,7 @@ model Product {
   orderItems OrderItem[]
   reviews    Review[]
   cartItems  CartItem[]
+  wishlists  Wishlist[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -329,4 +332,42 @@ model Notification {
 
   @@index([userId])
   @@map("notifications")
+}
+
+// ============================================================
+// WISHLIST MODEL
+// ============================================================
+
+model Wishlist {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String   @db.Uuid
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([userId, productId])
+  @@map("wishlists")
+}
+
+// ============================================================
+// SAVED PAYMENT METHOD MODEL
+// ============================================================
+
+model SavedPaymentMethod {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // "CARD", "MOBILE_BANKING"
+  provider  String   // "VISA", "MASTERCARD", "BKASH", "ROCKET"
+  last4     String?  // Last 4 digits of card or phone number
+  isDefault Boolean  @default(false)
+  details   Json?    // Any extra metadata
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@map("saved_payment_methods")
 }
