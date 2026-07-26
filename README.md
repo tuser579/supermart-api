@@ -85,3 +85,4 @@ docker-compose up -d
 - `src/modules/` - Feature modules (auth, user, product, etc.)
 - `src/shared/` - Shared utilities, middleware, config, constants
 - `src/prisma/` - Database schema and migrations
+  
