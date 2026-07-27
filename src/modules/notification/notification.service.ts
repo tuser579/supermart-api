@@ -59,4 +59,17 @@ export const notificationService = {
       data: { isRead: true },
     });
   },
+
+  deleteNotification: async (notificationId: string, userId: string) => {
+    const notification = await prisma.notification.findUnique({
+      where: { id: notificationId },
+    });
+
+    if (!notification) throw ApiError.notFound('Notification not found');
+    if (notification.userId !== userId) throw ApiError.forbidden('Access denied');
+
+    return prisma.notification.delete({
+      where: { id: notificationId },
+    });
+  },
 };

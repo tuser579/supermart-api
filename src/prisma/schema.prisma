@@ -236,6 +236,8 @@ model Order {
   paymentMethod      PaymentMethod @default(COD)
   paymentStatus      PaymentStatus @default(PENDING)
   transactionId      String?
+  refundTransactionId String?
+  statusHistory      Json?         @default("[]")
   deliveryAddress    Json
   assignedStaffId    String?     @db.Uuid
   assignedStaff      Staff?      @relation("assignedOrders", fields: [assignedStaffId], references: [id])

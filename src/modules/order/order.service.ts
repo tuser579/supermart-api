@@ -114,8 +114,9 @@ export const orderService = {
         deliveryAddress: dto.deliveryAddress as any,
         notes: dto.notes,
         paymentMethod: dto.paymentMethod as any,
-        paymentStatus: (dto.paymentMethod === 'COD' ? 'PENDING' : 'COMPLETED') as any,
+        paymentStatus: 'PENDING' as any,
         transactionId: dto.transactionId,
+        statusHistory: [{ status: 'PENDING', timestamp: new Date().toISOString() }] as any,
         items: {
           create: orderItems.map((item) => ({
             id: crypto.randomUUID(),
@@ -268,8 +269,14 @@ export const orderService = {
       );
     }
 
-    const updateData: any = { status: dto.status };
-    if (dto.status === 'DELIVERED') {
+    const currentHistory = Array.isArray(order.statusHistory) ? order.statusHistory : [];
+    const newHistory = [...currentHistory, { status: dto.status, timestamp: new Date().toISOString() }];
+
+    const updateData: any = { 
+      status: dto.status,
+      statusHistory: newHistory 
+    };
+    if (dto.status === 'CONFIRMED') {
       updateData.deliveredAt = new Date();
       if (order.status !== 'DELIVERED' && order.assignedStaffId) {
         const deliveryEarning = order.deliveryCharge > 0 ? order.deliveryCharge : 50;
@@ -283,8 +290,16 @@ export const orderService = {
       }
     }
     if (dto.status === 'CANCELLED' || dto.status === 'RETURNED') {
-      if (dto.status === 'CANCELLED') updateData.cancellationReason = dto.cancellationReason;
-      if (dto.status === 'RETURNED') updateData.paymentStatus = 'REFUNDED';
+      if (dto.status === 'CANCELLED') {
+        updateData.cancellationReason = dto.cancellationReason || 'Invalid Transaction ID / Order Rejected';
+        updateData.paymentStatus = 'FAILED';
+      }
+      if (dto.status === 'RETURNED') {
+        updateData.paymentStatus = 'REFUNDED';
+        if (dto.refundTransactionId) {
+          updateData.refundTransactionId = dto.refundTransactionId;
+        }
+      }
       // Restore stock
       const orderWithItems = await prisma.order.findUnique({
         where: { id: orderId },
@@ -305,8 +320,10 @@ export const orderService = {
     // Notify user
     await notificationService.create({
       userId: order.userId,
-      title: `Order Status Updated`,
-      message: `Your order ${order.orderId} is now ${dto.status}.`,
+      title: dto.status === 'RETURNED' ? 'Refund Processed 💸' : `Order Status Updated`,
+      message: dto.status === 'RETURNED' 
+        ? `Your return request for order ${order.orderId} was approved. Refund TxnID: ${dto.refundTransactionId || 'N/A'}`
+        : `Your order ${order.orderId} is now ${dto.status}.`,
       type: 'ORDER',
       data: { orderId: order.id, status: dto.status },
     });

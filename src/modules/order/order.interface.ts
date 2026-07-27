@@ -19,6 +19,7 @@ export interface ICreateOrderDTO {
 export interface IUpdateOrderStatusDTO {
   status: string;
   cancellationReason?: string;
+  refundTransactionId?: string;
 }
 
 export interface IReturnOrderDTO {

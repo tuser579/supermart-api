@@ -32,4 +32,9 @@ export const notificationController = {
     await notificationService.markAllAsRead(req.user!.userId);
     res.status(200).json(ApiResponse.success('All notifications marked as read', null));
   }),
+
+  deleteNotification: asyncHandler(async (req: Request, res: Response) => {
+    await notificationService.deleteNotification(req.params.id as string, req.user!.userId);
+    res.status(200).json(ApiResponse.success('Notification deleted successfully', null));
+  }),
 };

@@ -16,4 +16,7 @@ router.put('/read-all', notificationController.markAllAsRead);
 // PUT /api/v1/notifications/:id/read
 router.put('/:id/read', notificationController.markAsRead);
 
+// DELETE /api/v1/notifications/:id
+router.delete('/:id', notificationController.deleteNotification);
+
 export default router;
