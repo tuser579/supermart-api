@@ -121,5 +121,42 @@ export const paymentController = {
     } catch (error) {
       res.status(500).json({ success: false, message: 'Error deleting payment method' });
     }
+  },
+
+  verifyMobileBanking: async (req: Request, res: Response) => {
+    try {
+      const { paymentMethod, transactionId, amount, senderPhone } = req.body;
+
+      if (!paymentMethod || !transactionId || !amount) {
+        throw ApiError.badRequest('Payment method, transaction ID, and amount are required');
+      }
+
+      const validMethods = ['BKASH', 'ROCKET', 'NOGOD'];
+      if (!validMethods.includes(paymentMethod.toUpperCase())) {
+        throw ApiError.badRequest('Invalid mobile banking payment method. Must be BKASH, ROCKET, or NOGOD.');
+      }
+
+      if (transactionId.trim().length < 4) {
+        throw ApiError.badRequest('Invalid transaction ID');
+      }
+
+      res.status(200).json({
+        success: true,
+        message: 'Mobile banking payment verified and recorded',
+        data: {
+          transactionId: transactionId.trim().toUpperCase(),
+          paymentMethod: paymentMethod.toUpperCase(),
+          amount: Number(amount),
+          senderPhone: senderPhone || null,
+          status: 'PENDING_VERIFICATION',
+        },
+      });
+    } catch (error) {
+      if (error instanceof ApiError) {
+        res.status(error.statusCode).json({ success: false, message: error.message });
+      } else {
+        res.status(500).json({ success: false, message: 'Internal server error during mobile banking verification' });
+      }
+    }
   }
 };

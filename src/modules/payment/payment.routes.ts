@@ -15,4 +15,6 @@ router.get('/methods', paymentController.getSavedMethods);
 router.post('/methods', paymentController.addSavedMethod);
 router.delete('/methods/:id', paymentController.deleteSavedMethod);
 
+router.post('/verify-mobile-banking', paymentController.verifyMobileBanking);
+
 export const paymentRoutes = router;
