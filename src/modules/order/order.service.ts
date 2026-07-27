@@ -277,6 +277,12 @@ export const orderService = {
       statusHistory: newHistory 
     };
     if (dto.status === 'CONFIRMED') {
+      if (['BKASH', 'ROCKET', 'NOGOD', 'CARD', 'BANK_TRANSFER'].includes(order.paymentMethod)) {
+        updateData.paymentStatus = 'COMPLETED';
+      }
+    }
+
+    if (dto.status === 'DELIVERED') {
       updateData.deliveredAt = new Date();
       if (order.status !== 'DELIVERED' && order.assignedStaffId) {
         const deliveryEarning = order.deliveryCharge > 0 ? order.deliveryCharge : 50;
