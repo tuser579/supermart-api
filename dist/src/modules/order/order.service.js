@@ -102,8 +102,9 @@ exports.orderService = {
                 deliveryAddress: dto.deliveryAddress,
                 notes: dto.notes,
                 paymentMethod: dto.paymentMethod,
-                paymentStatus: (dto.paymentMethod === 'COD' ? 'PENDING' : 'COMPLETED'),
+                paymentStatus: 'PENDING',
                 transactionId: dto.transactionId,
+                statusHistory: [{ status: 'PENDING', timestamp: new Date().toISOString() }],
                 items: {
                     create: orderItems.map((item) => ({
                         id: crypto_1.default.randomUUID(),
@@ -147,13 +148,28 @@ exports.orderService = {
         return newOrder;
     },
     getOrders: async (userId, role, params) => {
-        const { page = 1, limit = 20, status } = params;
+        const { page = 1, limit = 20, status, staffId, assigned } = params;
         const skip = (page - 1) * limit;
         const where = {};
         if (status)
             where.status = status;
-        if (role !== 'ADMIN')
-            where.userId = userId; // Users only see their own orders
+        if (staffId)
+            where.assignedStaffId = staffId;
+        if (assigned === 'true' || assigned === true) {
+            where.assignedStaffId = { not: null };
+        }
+        else if (assigned === 'false' || assigned === false) {
+            where.assignedStaffId = null;
+        }
+        if (role === 'STAFF' && !staffId) {
+            const staffMember = await database_config_1.prisma.staff.findUnique({ where: { userId } });
+            if (staffMember) {
+                where.assignedStaffId = staffMember.id;
+            }
+        }
+        else if (role !== 'ADMIN' && role !== 'STAFF') {
+            where.userId = userId;
+        }
         const [orders, total] = await database_config_1.prisma.$transaction([
             database_config_1.prisma.order.findMany({
                 where,
@@ -211,10 +227,11 @@ exports.orderService = {
         }
         // Status transition validation
         const validTransitions = {
-            PENDING: ['CONFIRMED', 'CANCELLED'],
-            CONFIRMED: ['PROCESSING', 'CANCELLED'],
-            PROCESSING: ['SHIPPED'],
-            SHIPPED: ['DELIVERED'],
+            PENDING: ['CONFIRMED', 'PROCESSING', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'],
+            CONFIRMED: ['PROCESSING', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'],
+            PROCESSING: ['SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'],
+            SHIPPED: ['OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'],
+            OUT_FOR_DELIVERY: ['DELIVERED', 'CANCELLED'],
             DELIVERED: ['RETURN_REQUESTED', 'RETURNED'],
             RETURN_REQUESTED: ['RETURNED', 'DELIVERED'],
             RETURNED: [],
@@ -224,15 +241,41 @@ exports.orderService = {
         if (!allowed.includes(dto.status)) {
             throw ApiError_1.ApiError.badRequest(`Cannot transition from ${order.status} to ${dto.status}`);
         }
-        const updateData = { status: dto.status };
+        const currentHistory = Array.isArray(order.statusHistory) ? order.statusHistory : [];
+        const newHistory = [...currentHistory, { status: dto.status, timestamp: new Date().toISOString() }];
+        const updateData = {
+            status: dto.status,
+            statusHistory: newHistory
+        };
+        if (dto.status === 'CONFIRMED') {
+            if (['BKASH', 'ROCKET', 'NOGOD', 'CARD', 'BANK_TRANSFER'].includes(order.paymentMethod)) {
+                updateData.paymentStatus = 'COMPLETED';
+            }
+        }
         if (dto.status === 'DELIVERED') {
             updateData.deliveredAt = new Date();
+            if (order.status !== 'DELIVERED' && order.assignedStaffId) {
+                const deliveryEarning = order.deliveryCharge > 0 ? order.deliveryCharge : 50;
+                await database_config_1.prisma.staff.update({
+                    where: { id: order.assignedStaffId },
+                    data: {
+                        totalDeliveries: { increment: 1 },
+                        earnings: { increment: deliveryEarning },
+                    },
+                }).catch(() => { });
+            }
         }
         if (dto.status === 'CANCELLED' || dto.status === 'RETURNED') {
-            if (dto.status === 'CANCELLED')
-                updateData.cancellationReason = dto.cancellationReason;
-            if (dto.status === 'RETURNED')
+            if (dto.status === 'CANCELLED') {
+                updateData.cancellationReason = dto.cancellationReason || 'Invalid Transaction ID / Order Rejected';
+                updateData.paymentStatus = 'FAILED';
+            }
+            if (dto.status === 'RETURNED') {
                 updateData.paymentStatus = 'REFUNDED';
+                if (dto.refundTransactionId) {
+                    updateData.refundTransactionId = dto.refundTransactionId;
+                }
+            }
             // Restore stock
             const orderWithItems = await database_config_1.prisma.order.findUnique({
                 where: { id: orderId },
@@ -251,8 +294,10 @@ exports.orderService = {
         // Notify user
         await notification_service_1.notificationService.create({
             userId: order.userId,
-            title: `Order Status Updated`,
-            message: `Your order ${order.orderId} is now ${dto.status}.`,
+            title: dto.status === 'RETURNED' ? 'Refund Processed 💸' : `Order Status Updated`,
+            message: dto.status === 'RETURNED'
+                ? `Your return request for order ${order.orderId} was approved. Refund TxnID: ${dto.refundTransactionId || 'N/A'}`
+                : `Your order ${order.orderId} is now ${dto.status}.`,
             type: 'ORDER',
             data: { orderId: order.id, status: dto.status },
         });
@@ -286,18 +331,26 @@ exports.orderService = {
         });
         return updatedOrder;
     },
-    cancelOrder: async (orderId, userId, reason) => {
+    cancelOrder: async (orderId, userId, role = 'USER', reason) => {
         const order = await database_config_1.prisma.order.findUnique({ where: { id: orderId } });
         if (!order)
             throw ApiError_1.ApiError.notFound('Order not found');
-        if (order.userId !== userId)
-            throw ApiError_1.ApiError.forbidden('Access denied');
-        if (order.status !== 'PENDING' && order.status !== 'CONFIRMED') {
-            throw ApiError_1.ApiError.badRequest('Order cannot be cancelled at this stage');
+        if (role === 'ADMIN') {
+            if (order.status === 'DELIVERED' || order.status === 'CANCELLED' || order.status === 'RETURNED') {
+                throw ApiError_1.ApiError.badRequest(`Order cannot be cancelled as it is already ${order.status}`);
+            }
         }
+        else {
+            if (order.userId !== userId)
+                throw ApiError_1.ApiError.forbidden('Access denied');
+            if (order.status !== 'PENDING' && order.status !== 'CONFIRMED') {
+                throw ApiError_1.ApiError.badRequest('Order cannot be cancelled at this stage');
+            }
+        }
+        const cancelReasonText = reason || (role === 'ADMIN' ? 'Cancelled by admin' : 'Cancelled by user');
         const updatedOrder = await database_config_1.prisma.order.update({
             where: { id: orderId },
-            data: { status: 'CANCELLED', cancellationReason: reason },
+            data: { status: 'CANCELLED', cancellationReason: cancelReasonText },
         });
         // Restore stock
         try {
@@ -310,6 +363,14 @@ exports.orderService = {
             }
         }
         catch (e) { }
+        // Send notification to customer
+        await notification_service_1.notificationService.create({
+            userId: order.userId,
+            title: 'Order Cancelled ❌',
+            message: `Your order ${order.orderId} has been cancelled. Reason: ${cancelReasonText}`,
+            type: 'ORDER',
+            data: { orderId: order.id, status: 'CANCELLED' },
+        });
         return updatedOrder;
     },
     returnOrder: async (orderId, userId, dto) => {

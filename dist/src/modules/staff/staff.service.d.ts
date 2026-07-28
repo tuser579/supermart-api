@@ -118,6 +118,8 @@ export declare const staffService: {
             paymentMethod: import(".prisma/client").$Enums.PaymentMethod;
             paymentStatus: import(".prisma/client").$Enums.PaymentStatus;
             transactionId: string | null;
+            refundTransactionId: string | null;
+            statusHistory: import("@prisma/client/runtime/library").JsonValue | null;
             deliveryAddress: import("@prisma/client/runtime/library").JsonValue;
             deliveredAt: Date | null;
             cancellationReason: string | null;
@@ -171,6 +173,50 @@ export declare const staffService: {
         totalDeliveries: number;
         earnings: number;
         isAvailable: boolean;
+    }>;
+    getStaffQuickOptions: (userId: string) => Promise<{
+        profile: {
+            staffId: string;
+            position: import(".prisma/client").$Enums.StaffPosition;
+            shift: import(".prisma/client").$Enums.Shift | null;
+            rating: number;
+            isAvailable: boolean;
+            totalDeliveries: number;
+            earnings: number;
+        };
+        todayAttendance: {
+            attendanceId: string | undefined;
+            status: import(".prisma/client").$Enums.AttendanceStatus | null;
+            checkIn: Date | null;
+            checkOut: Date | null;
+            canCheckIn: boolean;
+            canCheckOut: boolean;
+        };
+        workload: {
+            totalAssignedOrders: number;
+            activeDeliveriesCount: number;
+            completedDeliveriesTodayCount: number;
+        };
+        recentAssignedOrders: {
+            user: {
+                phone: string;
+                name: string;
+            };
+            id: string;
+            createdAt: Date;
+            updatedAt: Date;
+            status: import(".prisma/client").$Enums.OrderStatus;
+            totalAmount: number;
+            orderId: string;
+            paymentStatus: import(".prisma/client").$Enums.PaymentStatus;
+            deliveryAddress: import("@prisma/client/runtime/library").JsonValue;
+        }[];
+        quickActions: {
+            action: string;
+            method: string;
+            endpoint: string;
+            description: string;
+        }[];
     }>;
 };
 //# sourceMappingURL=staff.service.d.ts.map

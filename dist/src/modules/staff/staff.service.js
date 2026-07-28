@@ -181,5 +181,128 @@ exports.staffService = {
             data: { isAvailable },
         });
     },
+    getStaffQuickOptions: async (userId) => {
+        const staff = await database_config_1.prisma.staff.findUnique({
+            where: { userId },
+            include: {
+                user: { select: { id: true, name: true, email: true, phone: true } },
+            },
+        });
+        if (!staff)
+            throw ApiError_1.ApiError.notFound('Staff profile not found');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const todayAttendanceRecord = await database_config_1.prisma.attendance.findFirst({
+            where: {
+                staffId: staff.id,
+                date: { gte: today, lt: tomorrow },
+            },
+        });
+        const todayAttendance = {
+            attendanceId: todayAttendanceRecord?.id || undefined,
+            status: todayAttendanceRecord?.status || null,
+            checkIn: todayAttendanceRecord?.checkIn || null,
+            checkOut: todayAttendanceRecord?.checkOut || null,
+            canCheckIn: !todayAttendanceRecord,
+            canCheckOut: !!todayAttendanceRecord && !todayAttendanceRecord.checkOut,
+        };
+        const [totalAssignedOrders, activeDeliveriesCount, completedDeliveriesTodayCount] = await Promise.all([
+            database_config_1.prisma.order.count({ where: { assignedStaffId: staff.id } }),
+            database_config_1.prisma.order.count({
+                where: {
+                    assignedStaffId: staff.id,
+                    status: { in: ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'OUT_FOR_DELIVERY'] },
+                },
+            }),
+            database_config_1.prisma.order.count({
+                where: {
+                    assignedStaffId: staff.id,
+                    status: 'DELIVERED',
+                    deliveredAt: { gte: today },
+                },
+            }),
+        ]);
+        const recentAssignedOrders = await database_config_1.prisma.order.findMany({
+            where: { assignedStaffId: staff.id },
+            take: 5,
+            orderBy: { updatedAt: 'desc' },
+            select: {
+                id: true,
+                orderId: true,
+                status: true,
+                totalAmount: true,
+                paymentStatus: true,
+                deliveryAddress: true,
+                user: { select: { name: true, phone: true } },
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
+        const quickActions = [
+            {
+                action: 'MARK_ATTENDANCE_CHECKIN',
+                method: 'POST',
+                endpoint: '/api/v1/staff/attendance',
+                description: 'Mark check-in for today attendance',
+            },
+            {
+                action: 'MARK_ATTENDANCE_CHECKOUT',
+                method: 'POST',
+                endpoint: '/api/v1/staff/attendance',
+                description: 'Mark check-out for today attendance',
+            },
+            {
+                action: 'TOGGLE_AVAILABILITY',
+                method: 'PATCH',
+                endpoint: '/api/v1/staff/availability',
+                description: 'Update staff availability status (true/false)',
+            },
+            {
+                action: 'VIEW_ASSIGNED_ORDERS',
+                method: 'GET',
+                endpoint: '/api/v1/staff/orders',
+                description: 'Get all orders assigned to current staff member',
+            },
+            {
+                action: 'UPDATE_ORDER_STATUS',
+                method: 'PUT',
+                endpoint: '/api/v1/orders/:id/status',
+                description: 'Update assigned order status (CONFIRMED -> PROCESSING -> SHIPPED -> DELIVERED)',
+            },
+            {
+                action: 'VIEW_STAFF_PROFILE',
+                method: 'GET',
+                endpoint: '/api/v1/staff/profile',
+                description: 'Retrieve current staff profile details',
+            },
+            {
+                action: 'VIEW_STAFF_EARNINGS',
+                method: 'GET',
+                endpoint: '/api/v1/staff/earnings',
+                description: 'View delivery earnings and performance metrics',
+            },
+        ];
+        return {
+            profile: {
+                staffId: staff.staffId,
+                position: staff.position,
+                shift: staff.shift,
+                rating: staff.rating,
+                isAvailable: staff.isAvailable,
+                totalDeliveries: staff.totalDeliveries,
+                earnings: staff.earnings,
+            },
+            todayAttendance,
+            workload: {
+                totalAssignedOrders,
+                activeDeliveriesCount,
+                completedDeliveriesTodayCount,
+            },
+            recentAssignedOrders,
+            quickActions,
+        };
+    },
 };
 //# sourceMappingURL=staff.service.js.map

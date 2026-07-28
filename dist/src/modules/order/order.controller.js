@@ -26,7 +26,7 @@ exports.orderController = {
         res.status(200).json(ApiResponse_1.ApiResponse.success('Delivery assigned successfully', order));
     }),
     cancelOrder: (0, asyncHandler_1.asyncHandler)(async (req, res) => {
-        const order = await order_service_1.orderService.cancelOrder(req.params.id, req.user.userId, req.body.reason);
+        const order = await order_service_1.orderService.cancelOrder(req.params.id, req.user.userId, req.user.role, req.body.reason);
         res.status(200).json(ApiResponse_1.ApiResponse.success('Order cancelled successfully', order));
     }),
     returnOrder: (0, asyncHandler_1.asyncHandler)(async (req, res) => {

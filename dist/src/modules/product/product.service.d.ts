@@ -71,7 +71,10 @@ export declare const productService: {
         ratingCount: number;
         createdBy: string;
     }>;
-    updateProduct: (id: string, dto: IUpdateProductDTO) => Promise<{
+    updateProduct: (id: string, dto: IUpdateProductDTO & {
+        image?: string;
+        imageUrl?: string;
+    }) => Promise<{
         id: string;
         name: string;
         isActive: boolean;

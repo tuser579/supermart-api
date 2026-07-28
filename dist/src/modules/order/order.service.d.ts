@@ -32,6 +32,8 @@ export declare const orderService: {
         paymentMethod: import(".prisma/client").$Enums.PaymentMethod;
         paymentStatus: import(".prisma/client").$Enums.PaymentStatus;
         transactionId: string | null;
+        refundTransactionId: string | null;
+        statusHistory: import("@prisma/client/runtime/library").JsonValue | null;
         deliveryAddress: import("@prisma/client/runtime/library").JsonValue;
         deliveredAt: Date | null;
         cancellationReason: string | null;
@@ -97,6 +99,8 @@ export declare const orderService: {
             paymentMethod: import(".prisma/client").$Enums.PaymentMethod;
             paymentStatus: import(".prisma/client").$Enums.PaymentStatus;
             transactionId: string | null;
+            refundTransactionId: string | null;
+            statusHistory: import("@prisma/client/runtime/library").JsonValue | null;
             deliveryAddress: import("@prisma/client/runtime/library").JsonValue;
             deliveredAt: Date | null;
             cancellationReason: string | null;
@@ -166,6 +170,8 @@ export declare const orderService: {
         paymentMethod: import(".prisma/client").$Enums.PaymentMethod;
         paymentStatus: import(".prisma/client").$Enums.PaymentStatus;
         transactionId: string | null;
+        refundTransactionId: string | null;
+        statusHistory: import("@prisma/client/runtime/library").JsonValue | null;
         deliveryAddress: import("@prisma/client/runtime/library").JsonValue;
         deliveredAt: Date | null;
         cancellationReason: string | null;
@@ -188,6 +194,8 @@ export declare const orderService: {
         paymentMethod: import(".prisma/client").$Enums.PaymentMethod;
         paymentStatus: import(".prisma/client").$Enums.PaymentStatus;
         transactionId: string | null;
+        refundTransactionId: string | null;
+        statusHistory: import("@prisma/client/runtime/library").JsonValue | null;
         deliveryAddress: import("@prisma/client/runtime/library").JsonValue;
         deliveredAt: Date | null;
         cancellationReason: string | null;
@@ -210,6 +218,8 @@ export declare const orderService: {
         paymentMethod: import(".prisma/client").$Enums.PaymentMethod;
         paymentStatus: import(".prisma/client").$Enums.PaymentStatus;
         transactionId: string | null;
+        refundTransactionId: string | null;
+        statusHistory: import("@prisma/client/runtime/library").JsonValue | null;
         deliveryAddress: import("@prisma/client/runtime/library").JsonValue;
         deliveredAt: Date | null;
         cancellationReason: string | null;
@@ -219,7 +229,7 @@ export declare const orderService: {
         notes: string | null;
         assignedStaffId: string | null;
     }>;
-    cancelOrder: (orderId: string, userId: string, reason?: string) => Promise<{
+    cancelOrder: (orderId: string, userId: string, role?: string, reason?: string) => Promise<{
         id: string;
         createdAt: Date;
         updatedAt: Date;
@@ -232,6 +242,8 @@ export declare const orderService: {
         paymentMethod: import(".prisma/client").$Enums.PaymentMethod;
         paymentStatus: import(".prisma/client").$Enums.PaymentStatus;
         transactionId: string | null;
+        refundTransactionId: string | null;
+        statusHistory: import("@prisma/client/runtime/library").JsonValue | null;
         deliveryAddress: import("@prisma/client/runtime/library").JsonValue;
         deliveredAt: Date | null;
         cancellationReason: string | null;
@@ -254,6 +266,8 @@ export declare const orderService: {
         paymentMethod: import(".prisma/client").$Enums.PaymentMethod;
         paymentStatus: import(".prisma/client").$Enums.PaymentStatus;
         transactionId: string | null;
+        refundTransactionId: string | null;
+        statusHistory: import("@prisma/client/runtime/library").JsonValue | null;
         deliveryAddress: import("@prisma/client/runtime/library").JsonValue;
         deliveredAt: Date | null;
         cancellationReason: string | null;
@@ -276,6 +290,8 @@ export declare const orderService: {
         paymentMethod: import(".prisma/client").$Enums.PaymentMethod;
         paymentStatus: import(".prisma/client").$Enums.PaymentStatus;
         transactionId: string | null;
+        refundTransactionId: string | null;
+        statusHistory: import("@prisma/client/runtime/library").JsonValue | null;
         deliveryAddress: import("@prisma/client/runtime/library").JsonValue;
         deliveredAt: Date | null;
         cancellationReason: string | null;

@@ -36,5 +36,15 @@ export declare const notificationService: {
         isRead: boolean;
     }>;
     markAllAsRead: (userId: string) => Promise<import(".prisma/client").Prisma.BatchPayload>;
+    deleteNotification: (notificationId: string, userId: string) => Promise<{
+        message: string;
+        data: import("@prisma/client/runtime/library").JsonValue | null;
+        id: string;
+        createdAt: Date;
+        userId: string;
+        type: string;
+        title: string;
+        isRead: boolean;
+    }>;
 };
 //# sourceMappingURL=notification.service.d.ts.map

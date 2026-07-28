@@ -20,6 +20,7 @@ export interface ICreateOrderDTO {
 export interface IUpdateOrderStatusDTO {
     status: string;
     cancellationReason?: string;
+    refundTransactionId?: string;
 }
 export interface IReturnOrderDTO {
     reason: string;
@@ -38,5 +39,7 @@ export interface IOrderQueryParams {
     limit?: number;
     status?: string;
     userId?: string;
+    staffId?: string;
+    assigned?: 'true' | 'false' | boolean;
 }
 //# sourceMappingURL=order.interface.d.ts.map

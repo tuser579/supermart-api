@@ -48,8 +48,8 @@ export declare const updateAddressSchema: z.ZodObject<{
     city?: string | undefined;
     area?: string | undefined;
     postalCode?: string | undefined;
-    label?: string | undefined;
     isDefault?: boolean | undefined;
+    label?: string | undefined;
 }, {
     phone?: string | undefined;
     fullName?: string | undefined;
@@ -58,8 +58,8 @@ export declare const updateAddressSchema: z.ZodObject<{
     city?: string | undefined;
     area?: string | undefined;
     postalCode?: string | undefined;
-    label?: string | undefined;
     isDefault?: boolean | undefined;
+    label?: string | undefined;
 }>;
 export type CreateAddressInput = z.infer<typeof createAddressSchema>;
 export type UpdateAddressInput = z.infer<typeof updateAddressSchema>;

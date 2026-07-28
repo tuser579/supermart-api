@@ -256,9 +256,10 @@ export const orderService = {
       PROCESSING: ['SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'],
       SHIPPED: ['OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'],
       OUT_FOR_DELIVERY: ['DELIVERED', 'CANCELLED'],
-      DELIVERED: ['RETURN_REQUESTED', 'RETURNED'],
+      DELIVERED: ['RETURN_REQUESTED', 'RETURNED', 'COMPLETED'],
       RETURN_REQUESTED: ['RETURNED', 'DELIVERED'],
       RETURNED: [],
+      COMPLETED: [],
       CANCELLED: [],
     };
 
@@ -332,6 +333,29 @@ export const orderService = {
         : `Your order ${order.orderId} is now ${dto.status}.`,
       type: 'ORDER',
       data: { orderId: order.id, status: dto.status },
+    });
+
+    return updatedOrder;
+  },
+
+  acceptOrder: async (orderId: string, userId: string) => {
+    const order = await prisma.order.findUnique({ where: { id: orderId } });
+    if (!order) throw ApiError.notFound('Order not found');
+    if (order.userId !== userId) throw ApiError.forbidden('Access denied to this order');
+    if (order.status !== 'DELIVERED') throw ApiError.badRequest('Only delivered orders can be accepted');
+
+    const currentHistory = Array.isArray(order.statusHistory) ? order.statusHistory : [];
+    const newHistory = [...currentHistory, { status: 'COMPLETED', timestamp: new Date().toISOString() }];
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: {
+        status: 'COMPLETED',
+        statusHistory: newHistory,
+      },
+      include: {
+        items: { include: { product: true } },
+      },
     });
 
     return updatedOrder;

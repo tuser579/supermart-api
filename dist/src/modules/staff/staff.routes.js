@@ -25,5 +25,7 @@ router.get('/attendance', (0, role_middleware_1.requireRole)('STAFF', 'ADMIN'), 
 router.get('/earnings', (0, role_middleware_1.requireRole)('STAFF'), staff_controller_1.staffController.getEarnings);
 // PATCH /api/v1/staff/availability — STAFF
 router.patch('/availability', (0, role_middleware_1.requireRole)('STAFF'), (0, validation_middleware_1.validate)(staff_validation_1.updateAvailabilitySchema), staff_controller_1.staffController.updateAvailability);
+// GET /api/v1/staff/quick-options — STAFF action checking & dashboard summary
+router.get('/quick-options', (0, role_middleware_1.requireRole)('STAFF'), staff_controller_1.staffController.getQuickOptions);
 exports.default = router;
 //# sourceMappingURL=staff.routes.js.map

@@ -17,5 +17,9 @@ exports.notificationController = {
         await notification_service_1.notificationService.markAllAsRead(req.user.userId);
         res.status(200).json(ApiResponse_1.ApiResponse.success('All notifications marked as read', null));
     }),
+    deleteNotification: (0, asyncHandler_1.asyncHandler)(async (req, res) => {
+        await notification_service_1.notificationService.deleteNotification(req.params.id, req.user.userId);
+        res.status(200).json(ApiResponse_1.ApiResponse.success('Notification deleted successfully', null));
+    }),
 };
 //# sourceMappingURL=notification.controller.js.map

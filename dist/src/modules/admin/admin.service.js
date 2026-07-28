@@ -3,6 +3,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.adminService = void 0;
 const database_config_1 = require("../../shared/config/database.config");
 const ApiError_1 = require("../../shared/utils/ApiError");
+const order_service_1 = require("../order/order.service");
+const product_service_1 = require("../product/product.service");
 exports.adminService = {
     getDashboardStats: async () => {
         const now = new Date();
@@ -112,6 +114,7 @@ exports.adminService = {
                     email: true,
                     phone: true,
                     role: true,
+                    profileImage: true,
                     isVerified: true,
                     isActive: true,
                     lastLogin: true,
@@ -121,7 +124,11 @@ exports.adminService = {
             }),
             database_config_1.prisma.user.count({ where }),
         ]);
-        return { users, total, page, limit };
+        const formattedUsers = users.map((u) => ({
+            ...u,
+            avatar: u.profileImage,
+        }));
+        return { users: formattedUsers, total, page, limit };
     },
     toggleUserStatus: async (userId) => {
         const user = await database_config_1.prisma.user.findUnique({ where: { id: userId } });
@@ -152,6 +159,205 @@ exports.adminService = {
             earnings: s.earnings,
             isAvailable: s.isAvailable,
         }));
+    },
+    getQuickOptions: async () => {
+        const [assignedOrdersCount, unassignedOrdersCount, cancellableOrdersCount, totalCancelledCount, availableStaffCount, recentAssignedOrders, recentCancelledOrders, staffMembers, outOfStockCount, lowStockCount, outOfStockProducts, lowStockProducts,] = await database_config_1.prisma.$transaction([
+            database_config_1.prisma.order.count({ where: { assignedStaffId: { not: null } } }),
+            database_config_1.prisma.order.count({ where: { assignedStaffId: null, status: { in: ['PENDING', 'CONFIRMED'] } } }),
+            database_config_1.prisma.order.count({ where: { status: { in: ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED'] } } }),
+            database_config_1.prisma.order.count({ where: { status: 'CANCELLED' } }),
+            database_config_1.prisma.staff.count({ where: { isAvailable: true } }),
+            database_config_1.prisma.order.findMany({
+                where: { assignedStaffId: { not: null } },
+                take: 5,
+                orderBy: { updatedAt: 'desc' },
+                select: {
+                    id: true,
+                    orderId: true,
+                    status: true,
+                    totalAmount: true,
+                    assignedStaff: { select: { id: true, staffId: true, position: true, user: { select: { name: true, phone: true } } } },
+                    user: { select: { name: true, phone: true } },
+                    updatedAt: true,
+                },
+            }),
+            database_config_1.prisma.order.findMany({
+                where: { status: 'CANCELLED' },
+                take: 5,
+                orderBy: { updatedAt: 'desc' },
+                select: {
+                    id: true,
+                    orderId: true,
+                    totalAmount: true,
+                    cancellationReason: true,
+                    user: { select: { name: true, email: true } },
+                    updatedAt: true,
+                },
+            }),
+            database_config_1.prisma.staff.findMany({
+                select: {
+                    id: true,
+                    staffId: true,
+                    isAvailable: true,
+                    user: { select: { name: true } },
+                    _count: { select: { deliveries: { where: { status: { notIn: ['DELIVERED', 'CANCELLED', 'RETURNED'] } } } } },
+                },
+            }),
+            database_config_1.prisma.product.count({ where: { isActive: true, stock: 0 } }),
+            database_config_1.prisma.product.count({ where: { isActive: true, stock: { gt: 0, lte: 10 } } }),
+            database_config_1.prisma.product.findMany({
+                where: { isActive: true, stock: 0 },
+                take: 5,
+                orderBy: { updatedAt: 'desc' },
+                select: { id: true, name: true, price: true, category: true, stock: true, images: true, updatedAt: true },
+            }),
+            database_config_1.prisma.product.findMany({
+                where: { isActive: true, stock: { gt: 0, lte: 10 } },
+                take: 5,
+                orderBy: { stock: 'asc' },
+                select: { id: true, name: true, price: true, category: true, stock: true, images: true, updatedAt: true },
+            }),
+        ]);
+        return {
+            assignedOrdersOptions: {
+                totalAssignedOrders: assignedOrdersCount,
+                unassignedPendingOrders: unassignedOrdersCount,
+                availableDeliveryStaff: availableStaffCount,
+                recentAssignedOrders,
+                staffWorkloadSummary: staffMembers.map((s) => ({
+                    staffId: s.id,
+                    code: s.staffId,
+                    name: s.user.name,
+                    isAvailable: s.isAvailable,
+                    activeAssignedCount: s._count.deliveries,
+                })),
+            },
+            orderCancelOptions: {
+                cancellableOrdersCount,
+                totalCancelledCount,
+                recentCancelledOrders,
+                quickCancelEligibleStatuses: ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED'],
+            },
+            outOfStockOptions: {
+                totalOutOfStock: outOfStockCount,
+                totalLowStock: lowStockCount,
+                recentOutOfStockProducts: outOfStockProducts,
+                recentLowStockProducts: lowStockProducts,
+            },
+            quickActions: [
+                { action: 'ASSIGN_STAFF', method: 'POST', endpoint: '/api/v1/orders/:id/assign' },
+                { action: 'VIEW_ASSIGNED_ORDERS', method: 'GET', endpoint: '/api/v1/admin/orders/assigned' },
+                { action: 'CANCEL_ORDER', method: 'POST', endpoint: '/api/v1/admin/orders/:id/cancel' },
+                { action: 'VIEW_OUT_OF_STOCK', method: 'GET', endpoint: '/api/v1/admin/products/out-of-stock' },
+                { action: 'RESTOCK_PRODUCT', method: 'PATCH', endpoint: '/api/v1/admin/products/:id/restock' },
+                { action: 'LIST_PRODUCTS', method: 'GET', endpoint: '/api/v1/admin/products' },
+                { action: 'CREATE_PRODUCT', method: 'POST', endpoint: '/api/v1/admin/products' },
+                { action: 'EDIT_PRODUCT', method: 'PUT', endpoint: '/api/v1/admin/products/:id' },
+                { action: 'DELETE_PRODUCT', method: 'DELETE', endpoint: '/api/v1/admin/products/:id' },
+            ],
+        };
+    },
+    getAssignedOrders: async (params = {}) => {
+        const { page = 1, limit = 20, staffId } = params;
+        const skip = (Number(page) - 1) * Number(limit);
+        const where = { assignedStaffId: staffId ? staffId : { not: null } };
+        const [orders, total] = await database_config_1.prisma.$transaction([
+            database_config_1.prisma.order.findMany({
+                where,
+                skip,
+                take: Number(limit),
+                orderBy: { updatedAt: 'desc' },
+                include: {
+                    assignedStaff: {
+                        include: { user: { select: { name: true, phone: true, email: true } } },
+                    },
+                    user: { select: { id: true, name: true, email: true, phone: true } },
+                    items: {
+                        include: { product: { select: { id: true, name: true, images: true } } },
+                    },
+                },
+            }),
+            database_config_1.prisma.order.count({ where }),
+        ]);
+        return { orders, total, page: Number(page), limit: Number(limit) };
+    },
+    cancelOrderAsAdmin: async (orderId, adminId, reason) => {
+        return order_service_1.orderService.cancelOrder(orderId, adminId, 'ADMIN', reason);
+    },
+    getOutOfStockProducts: async (params = {}) => {
+        const { page = 1, limit = 20, status = 'all' } = params;
+        const skip = (Number(page) - 1) * Number(limit);
+        const where = { isActive: true };
+        if (status === 'out_of_stock') {
+            where.stock = 0;
+        }
+        else if (status === 'low_stock') {
+            where.stock = { gt: 0, lte: 10 };
+        }
+        else {
+            where.stock = { lte: 10 };
+        }
+        const [products, total] = await database_config_1.prisma.$transaction([
+            database_config_1.prisma.product.findMany({
+                where,
+                skip,
+                take: Number(limit),
+                orderBy: { stock: 'asc' },
+                select: {
+                    id: true,
+                    name: true,
+                    price: true,
+                    discountPrice: true,
+                    category: true,
+                    brand: true,
+                    stock: true,
+                    images: true,
+                    updatedAt: true,
+                },
+            }),
+            database_config_1.prisma.product.count({ where }),
+        ]);
+        return { products, total, page: Number(page), limit: Number(limit) };
+    },
+    restockProduct: async (productId, stock, addStock) => {
+        const product = await database_config_1.prisma.product.findUnique({ where: { id: productId } });
+        if (!product)
+            throw ApiError_1.ApiError.notFound('Product not found');
+        let newStock = product.stock;
+        if (stock !== undefined) {
+            newStock = stock;
+        }
+        else if (addStock !== undefined) {
+            newStock = product.stock + addStock;
+        }
+        return database_config_1.prisma.product.update({
+            where: { id: productId },
+            data: { stock: Math.max(0, newStock) },
+            select: {
+                id: true,
+                name: true,
+                price: true,
+                category: true,
+                stock: true,
+                updatedAt: true,
+            },
+        });
+    },
+    getAllProductsForAdmin: async (params = {}) => {
+        return product_service_1.productService.getAllProducts({ ...params, includeInactive: true });
+    },
+    createProductAsAdmin: async (dto, adminId) => {
+        return product_service_1.productService.createProduct(dto, adminId);
+    },
+    updateProductAsAdmin: async (productId, dto) => {
+        return product_service_1.productService.updateProduct(productId, dto);
+    },
+    updateProductImages: async (productId, images) => {
+        const imageList = Array.isArray(images) ? images : [images];
+        return product_service_1.productService.updateProduct(productId, { images: imageList });
+    },
+    deleteProductAsAdmin: async (productId) => {
+        return product_service_1.productService.deleteProduct(productId);
     },
 };
 //# sourceMappingURL=admin.service.js.map

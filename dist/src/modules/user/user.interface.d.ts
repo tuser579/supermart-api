@@ -5,6 +5,7 @@ export interface IUserProfile {
     phone: string;
     role: string;
     profileImage?: string | null;
+    avatar?: string | null;
     isVerified: boolean;
     isActive: boolean;
     lastLogin?: Date | null;
@@ -12,8 +13,11 @@ export interface IUserProfile {
 }
 export interface IUpdateProfileDTO {
     name?: string;
+    email?: string;
     phone?: string;
     profileImage?: string;
+    avatar?: string;
+    photo?: string;
 }
 export interface IChangePasswordDTO {
     currentPassword: string;

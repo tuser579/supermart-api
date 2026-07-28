@@ -12,5 +12,7 @@ router.get('/', notification_controller_1.notificationController.getNotification
 router.put('/read-all', notification_controller_1.notificationController.markAllAsRead);
 // PUT /api/v1/notifications/:id/read
 router.put('/:id/read', notification_controller_1.notificationController.markAsRead);
+// DELETE /api/v1/notifications/:id
+router.delete('/:id', notification_controller_1.notificationController.deleteNotification);
 exports.default = router;
 //# sourceMappingURL=notification.routes.js.map

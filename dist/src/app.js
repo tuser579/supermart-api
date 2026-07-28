@@ -21,6 +21,7 @@ const review_routes_1 = __importDefault(require("./modules/review/review.routes"
 const notification_routes_1 = __importDefault(require("./modules/notification/notification.routes"));
 const payment_routes_1 = require("./modules/payment/payment.routes");
 const address_routes_1 = __importDefault(require("./modules/address/address.routes"));
+const wishlist_routes_1 = __importDefault(require("./modules/wishlist/wishlist.routes"));
 const app = (0, express_1.default)();
 // ─── Security Middleware ───────────────────────────────────────────
 app.use((0, helmet_1.default)());
@@ -78,6 +79,7 @@ app.use(`${API_PREFIX}/reviews`, review_routes_1.default);
 app.use(`${API_PREFIX}/notifications`, notification_routes_1.default);
 app.use(`${API_PREFIX}/payments`, payment_routes_1.paymentRoutes);
 app.use(`${API_PREFIX}/addresses`, address_routes_1.default);
+app.use(`${API_PREFIX}/wishlists`, wishlist_routes_1.default);
 // ─── 404 Handler ──────────────────────────────────────────────────
 app.use((_req, res) => {
     res.status(404).json({

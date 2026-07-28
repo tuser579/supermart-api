@@ -45,6 +45,13 @@ router.post(
   orderController.returnOrder
 );
 
+// POST /api/v1/orders/:id/accept — USER
+router.post(
+  '/:id/accept',
+  requireRole('USER'),
+  orderController.acceptOrder
+);
+
 // POST /api/v1/orders/:id/cancel — USER / ADMIN
 router.post(
   '/:id/cancel',

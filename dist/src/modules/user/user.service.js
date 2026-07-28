@@ -24,23 +24,47 @@ exports.userService = {
         });
         if (!user)
             throw ApiError_1.ApiError.notFound('User not found');
-        return user;
+        return {
+            ...user,
+            avatar: user.profileImage,
+        };
     },
     updateProfile: async (userId, dto) => {
+        const profileImage = dto.profileImage ?? dto.avatar ?? dto.photo;
+        // Check email uniqueness if changing
+        if (dto.email) {
+            const existingEmail = await database_config_1.prisma.user.findFirst({
+                where: { email: dto.email, NOT: { id: userId } },
+            });
+            if (existingEmail)
+                throw ApiError_1.ApiError.conflict('Email address is already in use');
+        }
         // Check phone uniqueness if changing
         if (dto.phone) {
-            const existing = await database_config_1.prisma.user.findFirst({
+            const existingPhone = await database_config_1.prisma.user.findFirst({
                 where: { phone: dto.phone, NOT: { id: userId } },
             });
-            if (existing)
+            if (existingPhone)
                 throw ApiError_1.ApiError.conflict('Phone number is already in use');
         }
+        const updateData = {};
+        if (dto.name !== undefined)
+            updateData.name = dto.name;
+        if (dto.email !== undefined)
+            updateData.email = dto.email;
+        if (dto.phone !== undefined)
+            updateData.phone = dto.phone;
+        if (profileImage !== undefined)
+            updateData.profileImage = profileImage;
         const user = await database_config_1.prisma.user.update({
             where: { id: userId },
-            data: dto,
+            data: updateData,
             select: userSelectFields,
         });
-        return user;
+        return {
+            ...user,
+            avatar: user.profileImage,
+        };
     },
     changePassword: async (userId, dto) => {
         const user = await database_config_1.prisma.user.findUnique({

@@ -18,8 +18,8 @@ router.get('/', (0, role_middleware_1.requireRole)('USER', 'ADMIN', 'STAFF'), (0
 router.post('/:id/pay', (0, role_middleware_1.requireRole)('USER'), (0, validation_middleware_1.validate)(order_validation_1.payOrderSchema), order_controller_1.orderController.payOrder);
 // POST /api/v1/orders/:id/return — USER
 router.post('/:id/return', (0, role_middleware_1.requireRole)('USER'), (0, validation_middleware_1.validate)(order_validation_1.returnOrderSchema), order_controller_1.orderController.returnOrder);
-// POST /api/v1/orders/:id/cancel — USER
-router.post('/:id/cancel', (0, role_middleware_1.requireRole)('USER'), (0, validation_middleware_1.validate)(zod_1.z.object({ reason: zod_1.z.string().max(500).optional() })), order_controller_1.orderController.cancelOrder);
+// POST /api/v1/orders/:id/cancel — USER / ADMIN
+router.post('/:id/cancel', (0, role_middleware_1.requireRole)('USER', 'ADMIN'), (0, validation_middleware_1.validate)(zod_1.z.object({ reason: zod_1.z.string().max(500).optional() })), order_controller_1.orderController.cancelOrder);
 // POST /api/v1/orders/:id/assign — ADMIN
 router.post('/:id/assign', (0, role_middleware_1.requireRole)('ADMIN'), (0, validation_middleware_1.validate)(order_validation_1.assignDeliverySchema), order_controller_1.orderController.assignDelivery);
 // PUT /api/v1/orders/:id/status — ADMIN / STAFF

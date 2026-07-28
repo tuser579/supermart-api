@@ -11,10 +11,16 @@ exports.productService = {
         return product;
     },
     getAllProducts: async (params) => {
-        const { page = 1, limit = 20, search, category, minPrice, maxPrice, sortBy = 'createdAt', sortOrder = 'desc', inStock, } = params;
+        const { page = 1, limit = 20, search, category, minPrice, maxPrice, sortBy = 'createdAt', sortOrder = 'desc', inStock, outOfStock, lowStock, includeInactive, } = params;
         const skip = (page - 1) * limit;
         // Build filter
-        const where = { isActive: true };
+        const where = {};
+        if (includeInactive === 'true' || includeInactive === true) {
+            // Include both active and inactive products
+        }
+        else {
+            where.isActive = true;
+        }
         if (search) {
             where.OR = [
                 { name: { contains: search, mode: 'insensitive' } },
@@ -31,7 +37,13 @@ exports.productService = {
             if (maxPrice !== undefined)
                 where.price.lte = maxPrice;
         }
-        if (inStock !== undefined) {
+        if (outOfStock === 'true' || outOfStock === true) {
+            where.stock = 0;
+        }
+        else if (lowStock === 'true' || lowStock === true) {
+            where.stock = { gt: 0, lte: 10 };
+        }
+        else if (inStock !== undefined) {
             where.stock = inStock ? { gt: 0 } : { equals: 0 };
         }
         const [products, total] = await database_config_1.prisma.$transaction([
@@ -81,7 +93,21 @@ exports.productService = {
         const product = await database_config_1.prisma.product.findUnique({ where: { id } });
         if (!product)
             throw ApiError_1.ApiError.notFound('Product not found');
-        return database_config_1.prisma.product.update({ where: { id }, data: dto });
+        const updateData = { ...dto };
+        const singleImage = updateData.image || updateData.imageUrl;
+        if (singleImage) {
+            if (Array.isArray(updateData.images) && updateData.images.length > 0) {
+                if (!updateData.images.includes(singleImage)) {
+                    updateData.images.unshift(singleImage);
+                }
+            }
+            else {
+                updateData.images = [singleImage];
+            }
+            delete updateData.image;
+            delete updateData.imageUrl;
+        }
+        return database_config_1.prisma.product.update({ where: { id }, data: updateData });
     },
     deleteProduct: async (id) => {
         const product = await database_config_1.prisma.product.findUnique({ where: { id } });

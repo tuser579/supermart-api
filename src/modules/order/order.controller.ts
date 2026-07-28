@@ -69,4 +69,12 @@ export const orderController = {
     );
     res.status(200).json(ApiResponse.success('Payment recorded successfully', order));
   }),
+
+  acceptOrder: asyncHandler(async (req: Request, res: Response) => {
+    const order = await orderService.acceptOrder(
+      req.params.id as string,
+      req.user!.userId
+    );
+    res.status(200).json(ApiResponse.success('Order accepted successfully', order));
+  }),
 };

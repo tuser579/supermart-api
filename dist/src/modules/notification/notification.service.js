@@ -57,5 +57,17 @@ exports.notificationService = {
             data: { isRead: true },
         });
     },
+    deleteNotification: async (notificationId, userId) => {
+        const notification = await database_config_1.prisma.notification.findUnique({
+            where: { id: notificationId },
+        });
+        if (!notification)
+            throw ApiError_1.ApiError.notFound('Notification not found');
+        if (notification.userId !== userId)
+            throw ApiError_1.ApiError.forbidden('Access denied');
+        return database_config_1.prisma.notification.delete({
+            where: { id: notificationId },
+        });
+    },
 };
 //# sourceMappingURL=notification.service.js.map

@@ -12,8 +12,8 @@ export declare const addressService: {
         city: string;
         area: string;
         postalCode: string | null;
-        label: string;
         isDefault: boolean;
+        label: string;
     }[]>;
     create: (userId: string, dto: ICreateAddressDTO) => Promise<{
         id: string;
@@ -27,8 +27,8 @@ export declare const addressService: {
         city: string;
         area: string;
         postalCode: string | null;
-        label: string;
         isDefault: boolean;
+        label: string;
     }>;
     update: (userId: string, addressId: string, dto: IUpdateAddressDTO) => Promise<{
         id: string;
@@ -42,8 +42,8 @@ export declare const addressService: {
         city: string;
         area: string;
         postalCode: string | null;
-        label: string;
         isDefault: boolean;
+        label: string;
     }>;
     delete: (userId: string, addressId: string) => Promise<void>;
     setDefault: (userId: string, addressId: string) => Promise<{
@@ -58,8 +58,8 @@ export declare const addressService: {
         city: string;
         area: string;
         postalCode: string | null;
-        label: string;
         isDefault: boolean;
+        label: string;
     } | null>;
 };
 //# sourceMappingURL=address.service.d.ts.map

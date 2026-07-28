@@ -74,13 +74,13 @@ export declare const createOrderSchema: z.ZodObject<{
     notes?: string | undefined;
 }>;
 export declare const updateOrderStatusSchema: z.ZodObject<{
-    status: z.ZodEnum<["CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "RETURN_REQUESTED", "RETURNED"]>;
+    status: z.ZodEnum<["PENDING", "CONFIRMED", "PROCESSING", "SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED", "RETURN_REQUESTED", "RETURNED"]>;
     cancellationReason: z.ZodOptional<z.ZodString>;
 }, "strip", z.ZodTypeAny, {
-    status: "CONFIRMED" | "PROCESSING" | "SHIPPED" | "DELIVERED" | "CANCELLED" | "RETURN_REQUESTED" | "RETURNED";
+    status: "PENDING" | "CONFIRMED" | "PROCESSING" | "SHIPPED" | "OUT_FOR_DELIVERY" | "DELIVERED" | "CANCELLED" | "RETURN_REQUESTED" | "RETURNED";
     cancellationReason?: string | undefined;
 }, {
-    status: "CONFIRMED" | "PROCESSING" | "SHIPPED" | "DELIVERED" | "CANCELLED" | "RETURN_REQUESTED" | "RETURNED";
+    status: "PENDING" | "CONFIRMED" | "PROCESSING" | "SHIPPED" | "OUT_FOR_DELIVERY" | "DELIVERED" | "CANCELLED" | "RETURN_REQUESTED" | "RETURNED";
     cancellationReason?: string | undefined;
 }>;
 export declare const returnOrderSchema: z.ZodObject<{
@@ -106,15 +106,21 @@ export declare const assignDeliverySchema: z.ZodObject<{
 export declare const orderQuerySchema: z.ZodObject<{
     page: z.ZodDefault<z.ZodNumber>;
     limit: z.ZodDefault<z.ZodNumber>;
-    status: z.ZodOptional<z.ZodEnum<["PENDING", "CONFIRMED", "PROCESSING", "SHIPPED", "DELIVERED", "CANCELLED", "RETURN_REQUESTED", "RETURNED"]>>;
+    status: z.ZodOptional<z.ZodEnum<["PENDING", "CONFIRMED", "PROCESSING", "SHIPPED", "OUT_FOR_DELIVERY", "DELIVERED", "CANCELLED", "RETURN_REQUESTED", "RETURNED"]>>;
+    staffId: z.ZodOptional<z.ZodString>;
+    assigned: z.ZodOptional<z.ZodEnum<["true", "false"]>>;
 }, "strip", z.ZodTypeAny, {
     limit: number;
     page: number;
-    status?: "PENDING" | "CONFIRMED" | "PROCESSING" | "SHIPPED" | "DELIVERED" | "CANCELLED" | "RETURN_REQUESTED" | "RETURNED" | undefined;
+    status?: "PENDING" | "CONFIRMED" | "PROCESSING" | "SHIPPED" | "OUT_FOR_DELIVERY" | "DELIVERED" | "CANCELLED" | "RETURN_REQUESTED" | "RETURNED" | undefined;
+    staffId?: string | undefined;
+    assigned?: "true" | "false" | undefined;
 }, {
     limit?: number | undefined;
     page?: number | undefined;
-    status?: "PENDING" | "CONFIRMED" | "PROCESSING" | "SHIPPED" | "DELIVERED" | "CANCELLED" | "RETURN_REQUESTED" | "RETURNED" | undefined;
+    status?: "PENDING" | "CONFIRMED" | "PROCESSING" | "SHIPPED" | "OUT_FOR_DELIVERY" | "DELIVERED" | "CANCELLED" | "RETURN_REQUESTED" | "RETURNED" | undefined;
+    staffId?: string | undefined;
+    assigned?: "true" | "false" | undefined;
 }>;
 export declare const payOrderSchema: z.ZodObject<{
     paymentMethod: z.ZodEnum<["COD", "BKASH", "ROCKET", "NOGOD", "BANK_TRANSFER", "CARD"]>;

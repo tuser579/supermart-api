@@ -33,7 +33,7 @@ exports.createOrderSchema = zod_1.z.object({
         .optional(),
 });
 exports.updateOrderStatusSchema = zod_1.z.object({
-    status: zod_1.z.enum(['CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'RETURN_REQUESTED', 'RETURNED']),
+    status: zod_1.z.enum(['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED', 'RETURN_REQUESTED', 'RETURNED']),
     cancellationReason: zod_1.z.string().max(500).optional(),
 });
 exports.returnOrderSchema = zod_1.z.object({
@@ -47,7 +47,9 @@ exports.assignDeliverySchema = zod_1.z.object({
 exports.orderQuerySchema = zod_1.z.object({
     page: zod_1.z.coerce.number().int().positive().default(1),
     limit: zod_1.z.coerce.number().int().positive().max(100).default(20),
-    status: zod_1.z.enum(['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'DELIVERED', 'CANCELLED', 'RETURN_REQUESTED', 'RETURNED']).optional(),
+    status: zod_1.z.enum(['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED', 'RETURN_REQUESTED', 'RETURNED']).optional(),
+    staffId: zod_1.z.string().optional(),
+    assigned: zod_1.z.enum(['true', 'false']).optional(),
 });
 exports.payOrderSchema = zod_1.z.object({
     paymentMethod: zod_1.z.enum(['COD', 'BKASH', 'ROCKET', 'NOGOD', 'BANK_TRANSFER', 'CARD']),
