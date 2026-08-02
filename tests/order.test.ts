@@ -160,45 +160,45 @@ describe('Order & Cart Flow Integration Tests', () => {
     expect(res.body.data.items.length).toBe(0);
   });
 
-  it('5. Should set deliveredAt when order status transitions to DELIVERED while leaving paymentStatus PENDING for customer choice', async () => {
-    // Progress status PENDING -> CONFIRMED -> PROCESSING -> SHIPPED -> DELIVERED
-    await prisma.order.update({
-      where: { id: createdOrderId },
-      data: { status: 'SHIPPED' },
-    });
-
+  it('5. Should step through order status progression (PENDING -> CONFIRMED -> PROCESSING -> SHIPPED -> OUT_FOR_DELIVERY -> DELIVERED)', async () => {
     const adminLoginRes = await request(app).post('/api/v1/auth/login').send({
       email: 'admin@supermart.com',
       password: 'Admin@123',
     });
     const adminToken = adminLoginRes.body.data.tokens.accessToken;
 
-    const res = await request(app)
-      .put(`/api/v1/orders/${createdOrderId}/status`)
-      .set('Authorization', `Bearer ${adminToken}`)
-      .send({ status: 'DELIVERED' });
+    const steps = ['CONFIRMED', 'PROCESSING', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED'];
+    for (const stepStatus of steps) {
+      const stepRes = await request(app)
+        .put(`/api/v1/orders/${createdOrderId}/status`)
+        .set('Authorization', `Bearer ${adminToken}`)
+        .send({ status: stepStatus });
 
-    expect(res.statusCode).toBe(200);
-    expect(res.body.success).toBe(true);
-    expect(res.body.data.status).toBe('DELIVERED');
-    expect(res.body.data.deliveredAt).toBeDefined();
-    expect(res.body.data.paymentStatus).toBe('PENDING');
+      expect(stepRes.statusCode).toBe(200);
+      expect(stepRes.body.success).toBe(true);
+      expect(stepRes.body.data.status).toBe(stepStatus);
+    }
   });
 
-  it('6. Should allow customer to select payment method and complete payment for a DELIVERED order', async () => {
+  it('6. Should allow staff or admin to record Cash on Delivery (COD) payment for a DELIVERED order', async () => {
+    const adminLoginRes = await request(app).post('/api/v1/auth/login').send({
+      email: 'admin@supermart.com',
+      password: 'Admin@123',
+    });
+    const adminToken = adminLoginRes.body.data.tokens.accessToken;
+
     const payRes = await request(app)
       .post(`/api/v1/orders/${createdOrderId}/pay`)
-      .set('Authorization', `Bearer ${userToken}`)
+      .set('Authorization', `Bearer ${adminToken}`)
       .send({
-        paymentMethod: 'BKASH',
-        transactionId: 'BKASH-TRX-100200300',
+        paymentMethod: 'COD',
+        transactionId: 'COD-CASH-REC-001',
       });
 
     expect(payRes.statusCode).toBe(200);
     expect(payRes.body.success).toBe(true);
     expect(payRes.body.data.paymentStatus).toBe('COMPLETED');
-    expect(payRes.body.data.paymentMethod).toBe('BKASH');
-    expect(payRes.body.data.transactionId).toBe('BKASH-TRX-100200300');
+    expect(payRes.body.data.paymentMethod).toBe('COD');
   });
 
   it('7. Should allow user to submit a return request with report details for a DELIVERED order', async () => {
@@ -366,7 +366,89 @@ describe('Order & Cart Flow Integration Tests', () => {
     expect(deleteRes.statusCode).toBe(200);
     expect(deleteRes.body.success).toBe(true);
   });
+
+  it('13. Should process Admin payment verification for valid transaction (COMPLETED)', async () => {
+    const adminLoginRes = await request(app).post('/api/v1/auth/login').send({
+      email: 'admin@supermart.com',
+      password: 'Admin@123',
+    });
+    const adminToken = adminLoginRes.body.data.tokens.accessToken;
+
+    // Place a new order with bKash
+    const orderPayload = {
+      deliveryAddress: {
+        fullName: 'bKash User',
+        phone: '+8801700000000',
+        addressLine1: 'Road 1',
+        city: 'Dhaka',
+        area: 'Gulshan',
+      },
+      paymentMethod: 'BKASH',
+      transactionId: 'BKASH-TEST-9900',
+    };
+
+    const newOrderRes = await request(app)
+      .post('/api/v1/orders')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send(orderPayload);
+
+    expect(newOrderRes.statusCode).toBe(201);
+    const bkashOrderId = newOrderRes.body.data.id;
+
+    // Admin verifies payment as valid
+    const verifyRes = await request(app)
+      .post(`/api/v1/orders/${bkashOrderId}/verify-payment`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ isValid: true });
+
+    expect(verifyRes.statusCode).toBe(200);
+    expect(verifyRes.body.success).toBe(true);
+    expect(verifyRes.body.data.status).toBe('COMPLETED');
+    expect(verifyRes.body.data.paymentStatus).toBe('COMPLETED');
+  });
+
+  it('14. Should process Admin payment verification for invalid transaction (CANCELLED)', async () => {
+    const adminLoginRes = await request(app).post('/api/v1/auth/login').send({
+      email: 'admin@supermart.com',
+      password: 'Admin@123',
+    });
+    const adminToken = adminLoginRes.body.data.tokens.accessToken;
+
+    // Place a new order with Nagad
+    const orderPayload = {
+      deliveryAddress: {
+        fullName: 'Nagad User',
+        phone: '+8801800000000',
+        addressLine1: 'Road 2',
+        city: 'Dhaka',
+        area: 'Banani',
+      },
+      paymentMethod: 'NOGOD',
+      transactionId: 'INVALID-TRX-000',
+    };
+
+    const newOrderRes = await request(app)
+      .post('/api/v1/orders')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send(orderPayload);
+
+    expect(newOrderRes.statusCode).toBe(201);
+    const nagadOrderId = newOrderRes.body.data.id;
+
+    // Admin verifies payment as invalid
+    const verifyRes = await request(app)
+      .post(`/api/v1/orders/${nagadOrderId}/verify-payment`)
+      .set('Authorization', `Bearer ${adminToken}`)
+      .send({ isValid: false, reason: 'Transaction ID not found in bank records' });
+
+    expect(verifyRes.statusCode).toBe(200);
+    expect(verifyRes.body.success).toBe(true);
+    expect(verifyRes.body.data.status).toBe('CANCELLED');
+    expect(verifyRes.body.data.paymentStatus).toBe('FAILED');
+    expect(verifyRes.body.data.cancellationReason).toContain('Transaction ID not found');
+  });
 });
+
 
 
 

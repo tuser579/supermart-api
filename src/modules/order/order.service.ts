@@ -8,6 +8,7 @@ import {
   IReturnOrderDTO,
   IPayOrderDTO,
   IOrderQueryParams,
+  IVerifyPaymentDTO,
 } from './order.interface';
 
 const generateOrderId = (): string => {
@@ -238,7 +239,9 @@ export const orderService = {
     userId: string,
     role: string
   ) => {
-    const order = await prisma.order.findUnique({ where: { id: orderId } });
+    const order =
+      (await prisma.order.findUnique({ where: { id: orderId } })) ||
+      (await prisma.order.findUnique({ where: { orderId: orderId } }));
     if (!order) throw ApiError.notFound('Order not found');
 
     // Staff can only update their assigned orders
@@ -249,9 +252,9 @@ export const orderService = {
       }
     }
 
-    // Status transition validation
+    // Status transition validation: Order placement completed (PENDING) -> Staff Assigned / Confirmed (CONFIRMED) -> Subsequent statuses
     const validTransitions: Record<string, string[]> = {
-      PENDING: ['CONFIRMED', 'PROCESSING', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'],
+      PENDING: ['CONFIRMED', 'CANCELLED'],
       CONFIRMED: ['PROCESSING', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'],
       PROCESSING: ['SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'],
       SHIPPED: ['OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED'],
@@ -259,7 +262,7 @@ export const orderService = {
       DELIVERED: ['RETURN_REQUESTED', 'RETURNED', 'COMPLETED'],
       RETURN_REQUESTED: ['RETURNED', 'DELIVERED'],
       RETURNED: [],
-      COMPLETED: [],
+      COMPLETED: ['RETURN_REQUESTED'],
       CANCELLED: [],
     };
 
@@ -322,7 +325,7 @@ export const orderService = {
       }
     }
 
-    const updatedOrder = await prisma.order.update({ where: { id: orderId }, data: updateData });
+    const updatedOrder = await prisma.order.update({ where: { id: order.id }, data: updateData });
 
     // Notify user
     await notificationService.create({
@@ -339,7 +342,9 @@ export const orderService = {
   },
 
   acceptOrder: async (orderId: string, userId: string) => {
-    const order = await prisma.order.findUnique({ where: { id: orderId } });
+    const order =
+      (await prisma.order.findUnique({ where: { id: orderId } })) ||
+      (await prisma.order.findUnique({ where: { orderId: orderId } }));
     if (!order) throw ApiError.notFound('Order not found');
     if (order.userId !== userId) throw ApiError.forbidden('Access denied to this order');
     if (order.status !== 'DELIVERED') throw ApiError.badRequest('Only delivered orders can be accepted');
@@ -348,7 +353,7 @@ export const orderService = {
     const newHistory = [...currentHistory, { status: 'COMPLETED', timestamp: new Date().toISOString() }];
 
     const updatedOrder = await prisma.order.update({
-      where: { id: orderId },
+      where: { id: order.id },
       data: {
         status: 'COMPLETED',
         statusHistory: newHistory,
@@ -362,7 +367,9 @@ export const orderService = {
   },
 
   assignDelivery: async (orderId: string, staffId: string) => {
-    const order = await prisma.order.findUnique({ where: { id: orderId } });
+    const order =
+      (await prisma.order.findUnique({ where: { id: orderId } })) ||
+      (await prisma.order.findUnique({ where: { orderId: orderId } }));
     if (!order) throw ApiError.notFound('Order not found');
     if (order.status === 'DELIVERED' || order.status === 'CANCELLED' || order.status === 'RETURNED') {
       throw ApiError.badRequest('Cannot assign delivery for completed or cancelled orders');
@@ -373,7 +380,7 @@ export const orderService = {
     if (!staff.isAvailable) throw ApiError.badRequest('Staff member is not available');
 
     const updatedOrder = await prisma.order.update({
-      where: { id: orderId },
+      where: { id: order.id },
       data: {
         assignedStaffId: staffId,
         status: order.status === 'PENDING' ? 'CONFIRMED' : order.status,
@@ -392,7 +399,9 @@ export const orderService = {
   },
 
   cancelOrder: async (orderId: string, userId: string, role: string = 'USER', reason?: string) => {
-    const order = await prisma.order.findUnique({ where: { id: orderId } });
+    const order =
+      (await prisma.order.findUnique({ where: { id: orderId } })) ||
+      (await prisma.order.findUnique({ where: { orderId: orderId } }));
     if (!order) throw ApiError.notFound('Order not found');
 
     if (role === 'ADMIN') {
@@ -409,7 +418,7 @@ export const orderService = {
     const cancelReasonText = reason || (role === 'ADMIN' ? 'Cancelled by admin' : 'Cancelled by user');
 
     const updatedOrder = await prisma.order.update({
-      where: { id: orderId },
+      where: { id: order.id },
       data: { status: 'CANCELLED', cancellationReason: cancelReasonText },
     });
 
@@ -437,15 +446,17 @@ export const orderService = {
   },
 
   returnOrder: async (orderId: string, userId: string, dto: IReturnOrderDTO) => {
-    const order = await prisma.order.findUnique({ where: { id: orderId } });
+    const order =
+      (await prisma.order.findUnique({ where: { id: orderId } })) ||
+      (await prisma.order.findUnique({ where: { orderId: orderId } }));
     if (!order) throw ApiError.notFound('Order not found');
     if (order.userId !== userId) throw ApiError.forbidden('Access denied');
-    if (order.status !== 'DELIVERED') {
-      throw ApiError.badRequest('Order must be delivered before initiating a return request');
+    if (order.status !== 'DELIVERED' && order.status !== 'COMPLETED') {
+      throw ApiError.badRequest('Order must be delivered or completed before initiating a return request');
     }
 
     const updatedOrder = await prisma.order.update({
-      where: { id: orderId },
+      where: { id: order.id },
       data: {
         status: 'RETURN_REQUESTED' as any,
         returnReason: dto.reason,
@@ -465,10 +476,21 @@ export const orderService = {
     return updatedOrder;
   },
 
-  payOrder: async (orderId: string, userId: string, dto: IPayOrderDTO) => {
-    const order = await prisma.order.findUnique({ where: { id: orderId } });
+  payOrder: async (orderId: string, userId: string, role: string, dto: IPayOrderDTO) => {
+    const order =
+      (await prisma.order.findUnique({ where: { id: orderId } })) ||
+      (await prisma.order.findUnique({ where: { orderId: orderId } }));
     if (!order) throw ApiError.notFound('Order not found');
-    if (order.userId !== userId) throw ApiError.forbidden('Access denied');
+
+    if (role === 'USER' && order.userId !== userId) {
+      throw ApiError.forbidden('Access denied to this order');
+    }
+    if (role === 'STAFF') {
+      const staff = await prisma.staff.findUnique({ where: { userId } });
+      if (!staff || order.assignedStaffId !== staff.id) {
+        throw ApiError.forbidden('You can only collect payment for orders assigned to you');
+      }
+    }
 
     if (order.status !== 'DELIVERED') {
       throw ApiError.badRequest('Payment can only be submitted after the order has been delivered');
@@ -477,23 +499,116 @@ export const orderService = {
       throw ApiError.badRequest('Payment for this order has already been completed');
     }
 
+    const targetPaymentMethod = (dto.paymentMethod as any) || order.paymentMethod;
+    const isCOD = targetPaymentMethod === 'COD';
+
+    let updateData: any = {
+      paymentMethod: targetPaymentMethod,
+      transactionId: dto.transactionId || order.transactionId,
+    };
+
+    if (isCOD) {
+      // Cash on Delivery automatically completes payment and transitions order to COMPLETED
+      const currentHistory = Array.isArray(order.statusHistory) ? order.statusHistory : [];
+      const newHistory = [...currentHistory, { status: 'COMPLETED', timestamp: new Date().toISOString() }];
+
+      updateData.paymentStatus = 'COMPLETED';
+      updateData.status = 'COMPLETED';
+      updateData.statusHistory = newHistory;
+    } else {
+      // Mobile Banking payment requires Admin verification
+      updateData.paymentStatus = 'PENDING';
+    }
+
     const updatedOrder = await prisma.order.update({
-      where: { id: orderId },
-      data: {
-        paymentStatus: 'COMPLETED',
-        paymentMethod: dto.paymentMethod as any,
-        transactionId: dto.transactionId || order.transactionId,
-      },
+      where: { id: order.id },
+      data: updateData,
     });
 
-    await notificationService.create({
-      userId,
-      title: 'Payment Received 💳',
-      message: `Payment of ৳${order.totalAmount} for order ${order.orderId} was successfully recorded.`,
-      type: 'ORDER',
-      data: { orderId: order.id, paymentStatus: 'COMPLETED' },
-    });
+    if (isCOD) {
+      await notificationService.create({
+        userId: order.userId,
+        title: 'Payment Received 💳',
+        message: `Cash payment of ৳${order.totalAmount} for order ${order.orderId} was recorded. Order is now COMPLETED.`,
+        type: 'ORDER',
+        data: { orderId: order.id, paymentStatus: 'COMPLETED', status: 'COMPLETED' },
+      });
+    } else {
+      await notificationService.create({
+        userId: order.userId,
+        title: 'Payment Submitted 💳',
+        message: `Your mobile banking transaction ID (${updatedOrder.transactionId}) for order ${order.orderId} has been sent to Admin for verification.`,
+        type: 'ORDER',
+        data: { orderId: order.id, paymentStatus: 'PENDING' },
+      });
+    }
 
     return updatedOrder;
+  },
+
+  verifyPayment: async (orderId: string, dto: IVerifyPaymentDTO) => {
+    const order =
+      (await prisma.order.findUnique({ where: { id: orderId } })) ||
+      (await prisma.order.findUnique({ where: { orderId: orderId } }));
+    if (!order) throw ApiError.notFound('Order not found');
+
+    const currentHistory = Array.isArray(order.statusHistory) ? order.statusHistory : [];
+
+    if (dto.isValid) {
+      // Valid Transaction ID -> Complete Payment and set status to COMPLETED
+      const newHistory = [...currentHistory, { status: 'COMPLETED', timestamp: new Date().toISOString() }];
+
+      const updatedOrder = await prisma.order.update({
+        where: { id: order.id },
+        data: {
+          paymentStatus: 'COMPLETED',
+          status: 'COMPLETED',
+          statusHistory: newHistory,
+        },
+      });
+
+      await notificationService.create({
+        userId: order.userId,
+        title: 'Payment Verified 💳',
+        message: `Your mobile banking transaction ID for order ${order.orderId} was verified successfully. Order is COMPLETED.`,
+        type: 'ORDER',
+        data: { orderId: order.id, paymentStatus: 'COMPLETED', status: 'COMPLETED' },
+      });
+
+      return updatedOrder;
+    } else {
+      // Invalid Transaction ID -> Mark Payment FAILED, Order CANCELLED, restore stock
+      const cancelReasonText = dto.reason || 'Invalid Transaction ID submitted';
+
+      const updatedOrder = await prisma.order.update({
+        where: { id: order.id },
+        data: {
+          paymentStatus: 'FAILED',
+          status: 'CANCELLED',
+          cancellationReason: cancelReasonText,
+        },
+      });
+
+      // Restore inventory stock
+      try {
+        const items = await prisma.orderItem.findMany({ where: { orderId: order.id } });
+        for (const item of items) {
+          await prisma.product.update({
+            where: { id: item.productId },
+            data: { stock: { increment: item.quantity } },
+          });
+        }
+      } catch (e) {}
+
+      await notificationService.create({
+        userId: order.userId,
+        title: 'Payment Verification Failed ❌',
+        message: `Transaction verification for order ${order.orderId} failed: ${cancelReasonText}. Order has been cancelled.`,
+        type: 'ORDER',
+        data: { orderId: order.id, paymentStatus: 'FAILED', status: 'CANCELLED' },
+      });
+
+      return updatedOrder;
+    }
   },
 };

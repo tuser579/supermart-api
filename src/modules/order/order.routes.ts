@@ -8,6 +8,7 @@ import {
   updateOrderStatusSchema,
   returnOrderSchema,
   payOrderSchema,
+  verifyPaymentSchema,
   assignDeliverySchema,
   orderQuerySchema,
 } from './order.validation';
@@ -29,12 +30,20 @@ router.get(
   orderController.getOrders
 );
 
-// POST /api/v1/orders/:id/pay — USER
+// POST /api/v1/orders/:id/pay — USER / STAFF / ADMIN
 router.post(
   '/:id/pay',
-  requireRole('USER'),
+  requireRole('USER', 'STAFF', 'ADMIN'),
   validate(payOrderSchema),
   orderController.payOrder
+);
+
+// POST /api/v1/orders/:id/verify-payment — ADMIN
+router.post(
+  '/:id/verify-payment',
+  requireRole('ADMIN'),
+  validate(verifyPaymentSchema),
+  orderController.verifyPayment
 );
 
 // POST /api/v1/orders/:id/return — USER

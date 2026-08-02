@@ -88,12 +88,18 @@ Content-Type: application/json
       "activeDeliveriesCount": 2,
       "completedDeliveriesTodayCount": 3
     },
+    "cashSummary": {
+      "pendingCashToCollect": 950,
+      "totalCashCollected": 4200,
+      "cashCollectedToday": 1350
+    },
     "recentAssignedOrders": [
       {
         "id": "ord_uuid_1",
         "orderId": "SM-L1K23-A99",
         "status": "SHIPPED",
         "totalAmount": 450,
+        "paymentMethod": "COD",
         "paymentStatus": "PENDING",
         "deliveryAddress": {
           "addressLine1": "House 12, Road 5",
@@ -137,7 +143,13 @@ Content-Type: application/json
         "action": "UPDATE_ORDER_STATUS",
         "method": "PUT",
         "endpoint": "/api/v1/orders/:id/status",
-        "description": "Update assigned order status (CONFIRMED -> PROCESSING -> SHIPPED -> DELIVERED)"
+        "description": "Update assigned order status (CONFIRMED -> PROCESSING -> SHIPPED -> OUT_FOR_DELIVERY -> DELIVERED -> COMPLETED)"
+      },
+      {
+        "action": "COLLECT_CASH_PAYMENT",
+        "method": "POST",
+        "endpoint": "/api/v1/orders/:id/pay",
+        "description": "Record cash payment collected after order delivery"
       },
       {
         "action": "VIEW_STAFF_PROFILE",

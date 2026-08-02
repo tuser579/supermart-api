@@ -227,23 +227,55 @@ export const staffService = {
       canCheckOut: !!todayAttendanceRecord && !todayAttendanceRecord.checkOut,
     };
 
-    const [totalAssignedOrders, activeDeliveriesCount, completedDeliveriesTodayCount] =
-      await Promise.all([
-        prisma.order.count({ where: { assignedStaffId: staff.id } }),
-        prisma.order.count({
-          where: {
-            assignedStaffId: staff.id,
-            status: { in: ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'OUT_FOR_DELIVERY'] },
-          },
-        }),
-        prisma.order.count({
-          where: {
-            assignedStaffId: staff.id,
-            status: 'DELIVERED',
-            deliveredAt: { gte: today },
-          },
-        }),
-      ]);
+    const [
+      totalAssignedOrders,
+      activeDeliveriesCount,
+      completedDeliveriesTodayCount,
+      pendingCashAgg,
+      totalCashCollectedAgg,
+      cashCollectedTodayAgg,
+    ] = await Promise.all([
+      prisma.order.count({ where: { assignedStaffId: staff.id } }),
+      prisma.order.count({
+        where: {
+          assignedStaffId: staff.id,
+          status: { in: ['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'OUT_FOR_DELIVERY'] },
+        },
+      }),
+      prisma.order.count({
+        where: {
+          assignedStaffId: staff.id,
+          status: { in: ['DELIVERED', 'COMPLETED'] },
+          deliveredAt: { gte: today },
+        },
+      }),
+      prisma.order.aggregate({
+        where: {
+          assignedStaffId: staff.id,
+          paymentMethod: 'COD',
+          paymentStatus: 'PENDING',
+          status: { notIn: ['CANCELLED', 'RETURNED'] },
+        },
+        _sum: { totalAmount: true },
+      }),
+      prisma.order.aggregate({
+        where: {
+          assignedStaffId: staff.id,
+          paymentMethod: 'COD',
+          paymentStatus: 'COMPLETED',
+        },
+        _sum: { totalAmount: true },
+      }),
+      prisma.order.aggregate({
+        where: {
+          assignedStaffId: staff.id,
+          paymentMethod: 'COD',
+          paymentStatus: 'COMPLETED',
+          updatedAt: { gte: today },
+        },
+        _sum: { totalAmount: true },
+      }),
+    ]);
 
     const recentAssignedOrders = await prisma.order.findMany({
       where: { assignedStaffId: staff.id },
@@ -254,6 +286,7 @@ export const staffService = {
         orderId: true,
         status: true,
         totalAmount: true,
+        paymentMethod: true,
         paymentStatus: true,
         deliveryAddress: true,
         user: { select: { name: true, phone: true } },
@@ -291,7 +324,13 @@ export const staffService = {
         action: 'UPDATE_ORDER_STATUS',
         method: 'PUT',
         endpoint: '/api/v1/orders/:id/status',
-        description: 'Update assigned order status (CONFIRMED -> PROCESSING -> SHIPPED -> DELIVERED)',
+        description: 'Update assigned order status (CONFIRMED -> PROCESSING -> SHIPPED -> OUT_FOR_DELIVERY -> DELIVERED -> COMPLETED)',
+      },
+      {
+        action: 'COLLECT_CASH_PAYMENT',
+        method: 'POST',
+        endpoint: '/api/v1/orders/:id/pay',
+        description: 'Record cash payment collected after order delivery',
       },
       {
         action: 'VIEW_STAFF_PROFILE',
@@ -322,6 +361,11 @@ export const staffService = {
         totalAssignedOrders,
         activeDeliveriesCount,
         completedDeliveriesTodayCount,
+      },
+      cashSummary: {
+        pendingCashToCollect: pendingCashAgg._sum.totalAmount || 0,
+        totalCashCollected: totalCashCollectedAgg._sum.totalAmount || 0,
+        cashCollectedToday: cashCollectedTodayAgg._sum.totalAmount || 0,
       },
       recentAssignedOrders,
       quickActions,

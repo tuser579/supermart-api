@@ -46,3 +46,9 @@ export interface IOrderQueryParams {
   assigned?: 'true' | 'false' | boolean;
 }
 
+export interface IVerifyPaymentDTO {
+  isValid: boolean;
+  reason?: string;
+}
+
+

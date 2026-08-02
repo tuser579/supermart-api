@@ -50,7 +50,7 @@ export const createOrderSchema = z.object({
 });
 
 export const updateOrderStatusSchema = z.object({
-  status: z.enum(['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED', 'RETURN_REQUESTED', 'RETURNED']),
+  status: z.enum(['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED', 'RETURN_REQUESTED', 'RETURNED', 'COMPLETED']),
   cancellationReason: z.string().max(500).optional(),
 });
 
@@ -67,7 +67,7 @@ export const assignDeliverySchema = z.object({
 export const orderQuerySchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().max(100).default(20),
-  status: z.enum(['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED', 'RETURN_REQUESTED', 'RETURNED']).optional(),
+  status: z.enum(['PENDING', 'CONFIRMED', 'PROCESSING', 'SHIPPED', 'OUT_FOR_DELIVERY', 'DELIVERED', 'CANCELLED', 'RETURN_REQUESTED', 'RETURNED', 'COMPLETED']).optional(),
   staffId: z.string().optional(),
   assigned: z.enum(['true', 'false']).optional(),
 });
@@ -77,9 +77,16 @@ export const payOrderSchema = z.object({
   transactionId: z.string().optional(),
 });
 
+export const verifyPaymentSchema = z.object({
+  isValid: z.boolean(),
+  reason: z.string().max(500).optional(),
+});
+
 export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 export type UpdateOrderStatusInput = z.infer<typeof updateOrderStatusSchema>;
 export type ReturnOrderInput = z.infer<typeof returnOrderSchema>;
 export type PayOrderInput = z.infer<typeof payOrderSchema>;
+export type VerifyPaymentInput = z.infer<typeof verifyPaymentSchema>;
+
 
 

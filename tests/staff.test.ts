@@ -79,6 +79,7 @@ describe('Staff Panel Action Checking & Dashboard Endpoints', () => {
     expect(res.body.data).toHaveProperty('profile');
     expect(res.body.data).toHaveProperty('todayAttendance');
     expect(res.body.data).toHaveProperty('workload');
+    expect(res.body.data).toHaveProperty('cashSummary');
     expect(res.body.data).toHaveProperty('quickActions');
     expect(res.body.data.todayAttendance.canCheckIn).toBe(true);
   });

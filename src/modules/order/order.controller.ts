@@ -65,6 +65,7 @@ export const orderController = {
     const order = await orderService.payOrder(
       req.params.id as string,
       req.user!.userId,
+      req.user!.role,
       req.body
     );
     res.status(200).json(ApiResponse.success('Payment recorded successfully', order));
@@ -77,4 +78,13 @@ export const orderController = {
     );
     res.status(200).json(ApiResponse.success('Order accepted successfully', order));
   }),
+
+  verifyPayment: asyncHandler(async (req: Request, res: Response) => {
+    const order = await orderService.verifyPayment(
+      req.params.id as string,
+      req.body
+    );
+    res.status(200).json(ApiResponse.success('Payment verification processed successfully', order));
+  }),
 };
+

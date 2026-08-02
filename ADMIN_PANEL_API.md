@@ -136,10 +136,17 @@ Content-Type: application/json
         }
       ]
     },
+    "cashPaymentOptions": {
+      "totalCodOrders": 15,
+      "pendingCodOrders": 3,
+      "pendingCodAmount": 1450,
+      "collectedCodAmount": 12800
+    },
     "quickActions": [
       { "action": "ASSIGN_STAFF", "method": "POST", "endpoint": "/api/v1/orders/:id/assign" },
       { "action": "VIEW_ASSIGNED_ORDERS", "method": "GET", "endpoint": "/api/v1/admin/orders/assigned" },
       { "action": "CANCEL_ORDER", "method": "POST", "endpoint": "/api/v1/admin/orders/:id/cancel" },
+      { "action": "RECORD_PAYMENT", "method": "POST", "endpoint": "/api/v1/orders/:id/pay" },
       { "action": "VIEW_OUT_OF_STOCK", "method": "GET", "endpoint": "/api/v1/admin/products/out-of-stock" },
       { "action": "RESTOCK_PRODUCT", "method": "PATCH", "endpoint": "/api/v1/admin/products/:id/restock" },
       { "action": "LIST_PRODUCTS", "method": "GET", "endpoint": "/api/v1/admin/products" },
@@ -160,7 +167,8 @@ Content-Type: application/json
   "message": "Dashboard statistics retrieved",
   "data": {
     "users": { "total": 150, "active": 142, "newToday": 5 },
-    "orders": { "total": 450, "pending": 12, "delivered": 410, "cancelled": 28, "revenue": 185000 },
+    "orders": { "total": 450, "pending": 12, "delivered": 400, "completed": 10, "cancelled": 28, "revenue": 185000 },
+    "cashPayment": { "pendingCodAmount": 1450, "collectedCodAmount": 12800, "totalCodOrders": 15 },
     "products": { "total": 85, "outOfStock": 3 },
     "staff": { "total": 10, "available": 7 }
   }
