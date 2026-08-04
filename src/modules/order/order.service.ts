@@ -384,12 +384,8 @@ export const orderService = {
     let newHistory = [...currentHistory];
 
     if (order.status === 'PENDING') {
-      newStatus = 'PROCESSING';
+      newStatus = 'CONFIRMED';
       newHistory.push({ status: 'CONFIRMED', timestamp: new Date().toISOString() });
-      newHistory.push({ status: 'PROCESSING', timestamp: new Date().toISOString() });
-    } else if (order.status === 'CONFIRMED') {
-      newStatus = 'PROCESSING';
-      newHistory.push({ status: 'PROCESSING', timestamp: new Date().toISOString() });
     }
 
     const updatedOrder = await prisma.order.update({

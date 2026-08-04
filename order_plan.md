@@ -62,10 +62,10 @@ All **14 integration tests** in `tests/order.test.ts` passed with **100% pass ra
 
 ```
 1. PENDING          -> Initial state after checkout completed
-   └─> CANCELLED    -> Cancelled by User/Admin before staff assignment/shipping
+   └─> CANCELLED    -> Cancelled by User/Admin before confirmation/shipping
 2. CONFIRMED        -> Order confirmed by Admin / System
-3. ASSIGNED STAFF   -> Admin assigns Staff (POST /api/v1/orders/:id/assign) -> Auto-transitions to PROCESSING
-4. PROCESSING       -> Warehouse processing & packaging by assigned staff
+3. ASSIGNED STAFF   -> Admin assigns Staff (POST /api/v1/orders/:id/assign) -> Order marked CONFIRMED with assigned staff
+4. PROCESSING       -> Staff starts warehouse processing & packaging (PUT /api/v1/orders/:id/status -> PROCESSING)
 5. SHIPPED          -> Dispatched for transit
 6. OUT_FOR_DELIVERY -> Handed to assigned delivery agent (Staff)
 7. DELIVERED        -> Delivered to customer (Cash collection pending/completed)
