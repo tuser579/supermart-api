@@ -333,16 +333,18 @@ Content-Type: application/json
 
 ### 4.3 Order Status Updates & Action Checking
 
-#### Update Assigned Order Status
+#### 4.3.1 Update Assigned Order Status
 - **Endpoint**: `PUT /api/v1/orders/:id/status`
 - **Request Headers**: `Authorization: Bearer <STAFF_TOKEN>`
 - **Rules**: Staff can only update orders assigned to them.
 - **Allowed State Transitions**:
   - `PENDING` -> `CONFIRMED`, `CANCELLED`
-  - `CONFIRMED` -> `PROCESSING`, `CANCELLED`
-  - `PROCESSING` -> `SHIPPED`
-  - `SHIPPED` -> `DELIVERED`
+  - `CONFIRMED` -> `PROCESSING`, `SHIPPED`, `OUT_FOR_DELIVERY`, `DELIVERED`, `CANCELLED`
+  - `PROCESSING` -> `SHIPPED`, `OUT_FOR_DELIVERY`, `DELIVERED`, `CANCELLED`
+  - `SHIPPED` -> `OUT_FOR_DELIVERY`, `DELIVERED`, `CANCELLED`
+  - `OUT_FOR_DELIVERY` -> `DELIVERED`, `CANCELLED`
   - `DELIVERED` -> `RETURN_REQUESTED`, `RETURNED`
+- **Guard Rule**: Order status cannot be updated manually to `COMPLETED` via `PUT /api/v1/orders/:id/status` if `paymentMethod` is `COD` and `paymentStatus` is `PENDING`. Staff MUST record cash collection via `POST /api/v1/orders/:id/pay`.
 - **Request Body**:
 ```json
 {
@@ -364,7 +366,35 @@ Content-Type: application/json
   }
 }
 ```
-*Note: Updating status to `DELIVERED` automatically increments `totalDeliveries` and updates `earnings` on the staff profile.*
+
+#### 4.3.2 Record Cash Payment & Complete Order ("Record and Completed" Button)
+- **Endpoint**: `POST /api/v1/orders/:id/pay`
+- **Request Headers**: `Authorization: Bearer <STAFF_TOKEN>`
+- **Description**: Triggered when staff clicks "Record and Completed" upon collecting cash from customer. Automatically sets `paymentStatus` = `COMPLETED`, `status` = `COMPLETED`, updates staff earnings & delivery count (+1), and notifies customer.
+- **Allowed States**: Order status is `OUT_FOR_DELIVERY` or `DELIVERED`, and `paymentStatus` is `PENDING`.
+- **Request Body**:
+```json
+{
+  "paymentMethod": "COD",
+  "transactionId": "CASH-REC-STAFF-101"
+}
+```
+- **Response Body**:
+```json
+{
+  "success": true,
+  "message": "Payment recorded successfully",
+  "data": {
+    "id": "ord_uuid_101",
+    "orderId": "SM-L1K23-A99",
+    "status": "COMPLETED",
+    "paymentMethod": "COD",
+    "paymentStatus": "COMPLETED",
+    "transactionId": "CASH-REC-STAFF-101",
+    "updatedAt": "2026-08-04T15:00:00.000Z"
+  }
+}
+```
 
 ---
 
@@ -538,7 +568,7 @@ export const staffApi = {
     return res.json();
   },
 
-  // Update status of assigned order
+  // Update status of assigned order (e.g. CONFIRMED -> PROCESSING -> SHIPPED -> OUT_FOR_DELIVERY -> DELIVERED)
   updateOrderStatus: async (token: string, orderId: string, status: string) => {
     const res = await fetch(`${BASE_URL}/orders/${orderId}/status`, {
       method: 'PUT',
@@ -549,6 +579,35 @@ export const staffApi = {
       body: JSON.stringify({ status })
     });
     return res.json();
+  },
+
+  // Record Cash Payment & Complete Order ("Record and Completed" Button)
+  recordCashAndComplete: async (token: string, orderId: string, transactionId?: string) => {
+    const res = await fetch(`${BASE_URL}/orders/${orderId}/pay`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      },
+      body: JSON.stringify({
+        paymentMethod: 'COD',
+        transactionId: transactionId || `CASH-${Date.now()}`
+      })
+    });
+    return res.json();
   }
+};
+
+// UI Condition helper to show "Record and Completed" button in Staff App
+export const canShowRecordAndCompletedButton = (order: {
+  status: string;
+  paymentMethod: string;
+  paymentStatus: string;
+}) => {
+  return (
+    (order.status === 'OUT_FOR_DELIVERY' || order.status === 'DELIVERED') &&
+    order.paymentMethod === 'COD' &&
+    order.paymentStatus === 'PENDING'
+  );
 };
 ```
