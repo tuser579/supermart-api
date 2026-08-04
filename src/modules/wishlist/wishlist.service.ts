@@ -15,9 +15,7 @@ export const getWishlist = async (userId: string) => {
           stock: true,
           isActive: true,
           rating: true,
-          category: {
-            select: { id: true, name: true }
-          }
+          category: true,
         },
       },
     },
