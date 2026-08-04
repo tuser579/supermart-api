@@ -518,27 +518,33 @@ export const orderService = {
     };
 
     if (isCOD) {
-      // Cash on Delivery automatically completes payment and transitions order to COMPLETED
-      const currentHistory = Array.isArray(order.statusHistory) ? order.statusHistory : [];
-      const newHistory = [...currentHistory, { status: 'COMPLETED', timestamp: new Date().toISOString() }];
+      if (role === 'USER') {
+        // Customer submits cash payment -> records transactionId, keeps paymentStatus PENDING for staff verification
+        updateData.transactionId = dto.transactionId || `CASH-USER-PAID-${Date.now()}`;
+        updateData.paymentStatus = 'PENDING';
+      } else {
+        // Staff or Admin records cash payment -> auto-completes order and updates status
+        const currentHistory = Array.isArray(order.statusHistory) ? order.statusHistory : [];
+        const newHistory = [...currentHistory, { status: 'COMPLETED', timestamp: new Date().toISOString() }];
 
-      updateData.paymentStatus = 'COMPLETED';
-      updateData.status = 'COMPLETED';
-      updateData.statusHistory = newHistory;
-      if (!order.deliveredAt) {
-        updateData.deliveredAt = new Date();
-      }
+        updateData.paymentStatus = 'COMPLETED';
+        updateData.status = 'COMPLETED';
+        updateData.statusHistory = newHistory;
+        if (!order.deliveredAt) {
+          updateData.deliveredAt = new Date();
+        }
 
-      // Update staff earnings & metrics if assigned
-      if (order.assignedStaffId) {
-        const deliveryEarning = order.deliveryCharge > 0 ? order.deliveryCharge : 50;
-        await prisma.staff.update({
-          where: { id: order.assignedStaffId },
-          data: {
-            totalDeliveries: { increment: 1 },
-            earnings: { increment: deliveryEarning },
-          },
-        }).catch(() => {});
+        // Update staff earnings & metrics if assigned
+        if (order.assignedStaffId) {
+          const deliveryEarning = order.deliveryCharge > 0 ? order.deliveryCharge : 50;
+          await prisma.staff.update({
+            where: { id: order.assignedStaffId },
+            data: {
+              totalDeliveries: { increment: 1 },
+              earnings: { increment: deliveryEarning },
+            },
+          }).catch(() => {});
+        }
       }
     } else {
       // Mobile Banking payment requires Admin verification
@@ -551,13 +557,23 @@ export const orderService = {
     });
 
     if (isCOD) {
-      await notificationService.create({
-        userId: order.userId,
-        title: 'Payment Received 💳',
-        message: `Cash payment of ৳${order.totalAmount} for order ${order.orderId} was recorded. Order is now COMPLETED.`,
-        type: 'ORDER',
-        data: { orderId: order.id, paymentStatus: 'COMPLETED', status: 'COMPLETED' },
-      });
+      if (role === 'USER') {
+        await notificationService.create({
+          userId: order.userId,
+          title: 'Cash Payment Submitted 💵',
+          message: `Cash payment submission for order ${order.orderId} recorded. Delivery staff will verify and complete your order upon cash collection.`,
+          type: 'ORDER',
+          data: { orderId: order.id, paymentStatus: 'PENDING' },
+        });
+      } else {
+        await notificationService.create({
+          userId: order.userId,
+          title: 'Payment Received 💳',
+          message: `Cash payment of ৳${order.totalAmount} for order ${order.orderId} was recorded by staff. Order is now COMPLETED.`,
+          type: 'ORDER',
+          data: { orderId: order.id, paymentStatus: 'COMPLETED', status: 'COMPLETED' },
+        });
+      }
     } else {
       await notificationService.create({
         userId: order.userId,
