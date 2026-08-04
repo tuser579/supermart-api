@@ -97,7 +97,7 @@ export const orderService = {
             where: { id: item.productId },
             data: { stock: newStock, isActive: true },
           });
-        } catch (e) {}
+        } catch (e) { }
       }
     }
 
@@ -140,7 +140,7 @@ export const orderService = {
           where: { id: item.productId },
           data: { stock: { decrement: item.quantity } },
         });
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // Clear cart if it existed
@@ -148,7 +148,7 @@ export const orderService = {
       try {
         await prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
         await prisma.cart.update({ where: { id: cart.id }, data: { totalAmount: 0 } });
-      } catch (e) {}
+      } catch (e) { }
     }
 
     // Send notification
@@ -276,9 +276,9 @@ export const orderService = {
     const currentHistory = Array.isArray(order.statusHistory) ? order.statusHistory : [];
     const newHistory = [...currentHistory, { status: dto.status, timestamp: new Date().toISOString() }];
 
-    const updateData: any = { 
+    const updateData: any = {
       status: dto.status,
-      statusHistory: newHistory 
+      statusHistory: newHistory
     };
     if (dto.status === 'CONFIRMED') {
       if (['BKASH', 'ROCKET', 'NOGOD', 'CARD', 'BANK_TRANSFER'].includes(order.paymentMethod)) {
@@ -296,7 +296,7 @@ export const orderService = {
             totalDeliveries: { increment: 1 },
             earnings: { increment: deliveryEarning },
           },
-        }).catch(() => {});
+        }).catch(() => { });
       }
     }
     if (dto.status === 'CANCELLED' || dto.status === 'RETURNED') {
@@ -331,7 +331,7 @@ export const orderService = {
     await notificationService.create({
       userId: order.userId,
       title: dto.status === 'RETURNED' ? 'Refund Processed 💸' : `Order Status Updated`,
-      message: dto.status === 'RETURNED' 
+      message: dto.status === 'RETURNED'
         ? `Your return request for order ${order.orderId} was approved. Refund TxnID: ${dto.refundTransactionId || 'N/A'}`
         : `Your order ${order.orderId} is now ${dto.status}.`,
       type: 'ORDER',
@@ -379,11 +379,25 @@ export const orderService = {
     if (!staff) throw ApiError.notFound('Staff member not found');
     if (!staff.isAvailable) throw ApiError.badRequest('Staff member is not available');
 
+    const currentHistory = Array.isArray(order.statusHistory) ? order.statusHistory : [];
+    let newStatus = order.status;
+    let newHistory = [...currentHistory];
+
+    if (order.status === 'PENDING') {
+      newStatus = 'PROCESSING';
+      newHistory.push({ status: 'CONFIRMED', timestamp: new Date().toISOString() });
+      newHistory.push({ status: 'PROCESSING', timestamp: new Date().toISOString() });
+    } else if (order.status === 'CONFIRMED') {
+      newStatus = 'PROCESSING';
+      newHistory.push({ status: 'PROCESSING', timestamp: new Date().toISOString() });
+    }
+
     const updatedOrder = await prisma.order.update({
       where: { id: order.id },
       data: {
         assignedStaffId: staffId,
-        status: order.status === 'PENDING' ? 'CONFIRMED' : order.status,
+        status: newStatus,
+        statusHistory: newHistory,
       },
     });
 
@@ -431,7 +445,7 @@ export const orderService = {
           data: { stock: { increment: item.quantity } },
         });
       }
-    } catch (e) {}
+    } catch (e) { }
 
     // Send notification to customer
     await notificationService.create({
@@ -492,8 +506,8 @@ export const orderService = {
       }
     }
 
-    if (order.status !== 'DELIVERED') {
-      throw ApiError.badRequest('Payment can only be submitted after the order has been delivered');
+    if (order.status !== 'DELIVERED' && order.status !== 'OUT_FOR_DELIVERY') {
+      throw ApiError.badRequest('Payment can only be submitted when order is out for delivery or delivered');
     }
     if (order.paymentStatus === 'COMPLETED') {
       throw ApiError.badRequest('Payment for this order has already been completed');
@@ -515,6 +529,21 @@ export const orderService = {
       updateData.paymentStatus = 'COMPLETED';
       updateData.status = 'COMPLETED';
       updateData.statusHistory = newHistory;
+      if (!order.deliveredAt) {
+        updateData.deliveredAt = new Date();
+      }
+
+      // Update staff earnings & metrics if assigned
+      if (order.assignedStaffId) {
+        const deliveryEarning = order.deliveryCharge > 0 ? order.deliveryCharge : 50;
+        await prisma.staff.update({
+          where: { id: order.assignedStaffId },
+          data: {
+            totalDeliveries: { increment: 1 },
+            earnings: { increment: deliveryEarning },
+          },
+        }).catch(() => {});
+      }
     } else {
       // Mobile Banking payment requires Admin verification
       updateData.paymentStatus = 'PENDING';
@@ -598,7 +627,7 @@ export const orderService = {
             data: { stock: { increment: item.quantity } },
           });
         }
-      } catch (e) {}
+      } catch (e) { }
 
       await notificationService.create({
         userId: order.userId,
