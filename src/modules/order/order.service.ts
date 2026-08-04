@@ -519,9 +519,9 @@ export const orderService = {
 
     if (isCOD) {
       if (role === 'USER') {
-        // Customer submits cash payment -> records transactionId, keeps paymentStatus PENDING for staff verification
+        // Customer submits cash payment -> records transactionId, sets paymentStatus to PAID for staff verification
         updateData.transactionId = dto.transactionId || `CASH-USER-PAID-${Date.now()}`;
-        updateData.paymentStatus = 'PENDING';
+        updateData.paymentStatus = 'PAID';
       } else {
         // Staff or Admin records cash payment -> auto-completes order and updates status
         const currentHistory = Array.isArray(order.statusHistory) ? order.statusHistory : [];
