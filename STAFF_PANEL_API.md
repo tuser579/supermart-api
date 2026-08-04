@@ -209,9 +209,21 @@ Content-Type: application/json
 
 ---
 
-### 4.2 Staff Assigned Orders
+### 4.2 Staff Assigned Orders & Lifecycle Progression
 
-#### Get My Assigned Orders
+#### 4.2.1 Order Step Progression Flow
+```
+1. PENDING          -> Order placed by customer (assignedStaffId: null)
+2. CONFIRMED        -> Admin/System confirms order (status: "CONFIRMED")
+3. ASSIGNED STAFF   -> Admin assigns Staff (POST /api/v1/orders/:id/assign) -> Order marked CONFIRMED with assignedStaffId
+4. PROCESSING       -> Staff/Admin starts warehouse processing (PUT /api/v1/orders/:id/status -> "PROCESSING")
+5. SHIPPED          -> Order packaged & dispatched (status: "SHIPPED")
+6. OUT_FOR_DELIVERY -> Handed over for delivery (status: "OUT_FOR_DELIVERY")
+7. DELIVERED        -> Product delivered to customer (status: "DELIVERED")
+8. COMPLETED        -> Staff collects cash & clicks "Record and Completed" (POST /api/v1/orders/:id/pay) -> status & paymentStatus: "COMPLETED"
+```
+
+#### 4.2.2 Get My Assigned Orders
 - **Endpoint**: `GET /api/v1/staff/orders`
 - **Query Params**: `page` (default 1), `limit` (default 20), `status` (optional: `PENDING`, `CONFIRMED`, `PROCESSING`, `SHIPPED`, `DELIVERED`, `CANCELLED`)
 - **Request Headers**: `Authorization: Bearer <STAFF_TOKEN>`
