@@ -271,6 +271,7 @@ enum OrderStatus {
 
 enum PaymentMethod {
   COD
+  CASH
   BKASH
   ROCKET
   NOGOD
@@ -280,6 +281,7 @@ enum PaymentMethod {
 
 enum PaymentStatus {
   PENDING
+  PAID
   COMPLETED
   FAILED
   REFUNDED

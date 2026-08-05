@@ -510,7 +510,7 @@ export const orderService = {
     }
 
     const targetPaymentMethod = (dto.paymentMethod as any) || order.paymentMethod;
-    const isCOD = targetPaymentMethod === 'COD';
+    const isCOD = targetPaymentMethod === 'COD' || targetPaymentMethod === 'CASH';
 
     let updateData: any = {
       paymentMethod: targetPaymentMethod,
@@ -534,8 +534,8 @@ export const orderService = {
           updateData.deliveredAt = new Date();
         }
 
-        // Update staff earnings & metrics if assigned
-        if (order.assignedStaffId) {
+        // Update staff earnings & metrics if assigned (only if not previously credited)
+        if (order.assignedStaffId && (order.status as string) !== 'COMPLETED') {
           const deliveryEarning = order.deliveryCharge > 0 ? order.deliveryCharge : 50;
           await prisma.staff.update({
             where: { id: order.assignedStaffId },
@@ -563,7 +563,7 @@ export const orderService = {
           title: 'Cash Payment Submitted 💵',
           message: `Cash payment submission for order ${order.orderId} recorded. Delivery staff will verify and complete your order upon cash collection.`,
           type: 'ORDER',
-          data: { orderId: order.id, paymentStatus: 'PENDING' },
+          data: { orderId: order.id, paymentStatus: 'PAID' },
         });
       } else {
         await notificationService.create({

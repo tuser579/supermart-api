@@ -27,7 +27,7 @@ export const createOrderSchema = z.object({
   notes: z.string().max(500).optional(),
   paymentMethod: z.preprocess(
     (v) => (v && typeof v === 'string' ? v.toUpperCase() : 'COD'),
-    z.enum(['COD', 'BKASH', 'ROCKET', 'NOGOD', 'BANK_TRANSFER', 'CARD'])
+    z.enum(['COD', 'CASH', 'BKASH', 'ROCKET', 'NOGOD', 'BANK_TRANSFER', 'CARD'])
   ),
   transactionId: z.string().optional(),
   items: z
@@ -73,7 +73,7 @@ export const orderQuerySchema = z.object({
 });
 
 export const payOrderSchema = z.object({
-  paymentMethod: z.enum(['COD', 'BKASH', 'ROCKET', 'NOGOD', 'BANK_TRANSFER', 'CARD']),
+  paymentMethod: z.enum(['COD', 'CASH', 'BKASH', 'ROCKET', 'NOGOD', 'BANK_TRANSFER', 'CARD']).optional(),
   transactionId: z.string().optional(),
 });
 

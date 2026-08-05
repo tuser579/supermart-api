@@ -296,6 +296,32 @@ Error responses follow this format:
 }
 ```
 
+### Confirm Cash Payment (Mark as PAID)
+- **Endpoint**: `POST /api/v1/orders/:id/pay`
+- **Description**: Triggered when customer clicks "💵 Confirm Cash Payment (Mark as PAID)" in User App (`TrackOrderScreen.tsx`) when order status is `DELIVERED` and `paymentStatus` is `PENDING`. Updates backend `paymentStatus` to `PAID` so Staff Panel displays the "Record and Completed" button.
+- **Request Headers**: `Authorization: Bearer <token>`
+- **Request Body**:
+```json
+{
+  "paymentMethod": "COD",
+  "transactionId": "CASH-USER-CONFIRM-101"
+}
+```
+- **Response**:
+```json
+{
+  "success": true,
+  "message": "Payment recorded successfully",
+  "data": {
+    "id": "uuid",
+    "status": "DELIVERED",
+    "paymentStatus": "PAID",
+    "paymentMethod": "COD",
+    "transactionId": "CASH-USER-CONFIRM-101"
+  }
+}
+```
+
 ---
 
 ## 6. Addresses (`/api/v1/addresses`)
