@@ -17,26 +17,27 @@ export const notificationService = {
     });
   },
 
-  getUserNotifications: async (userId: string, params: any) => {
-    const { page = 1, limit = 20, unreadOnly } = params;
-    const skip = (page - 1) * limit;
-
+  getUserNotifications: async (userId: string, params?: any) => {
     const where: any = { userId };
-    if (unreadOnly === 'true') {
+    if (params?.unreadOnly === 'true') {
       where.isRead = false;
     }
 
-    const [notifications, total] = await prisma.$transaction([
-      prisma.notification.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-      }),
-      prisma.notification.count({ where }),
-    ]);
+    const notifications = await prisma.notification.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        userId: true,
+        title: true,
+        message: true,
+        type: true,
+        isRead: true,
+        createdAt: true,
+      },
+    });
 
-    return { notifications, total, page, limit };
+    return notifications;
   },
 
   markAsRead: async (notificationId: string, userId: string) => {
@@ -70,6 +71,12 @@ export const notificationService = {
 
     return prisma.notification.delete({
       where: { id: notificationId },
+    });
+  },
+
+  deleteAllNotifications: async (userId: string) => {
+    return prisma.notification.deleteMany({
+      where: { userId },
     });
   },
 };

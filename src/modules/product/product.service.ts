@@ -3,11 +3,37 @@ import { ApiError } from '../../shared/utils/ApiError';
 import { ICreateProductDTO, IUpdateProductDTO, IProductQueryParams } from './product.interface';
 
 export const productService = {
+  formatProduct: (product: any) => {
+    if (!product) return null;
+    const { ratingCount, ...rest } = product;
+    return {
+      ...rest,
+      numReviews: ratingCount ?? product.numReviews ?? 0,
+    };
+  },
+
+  formatProductDetail: (product: any) => {
+    if (!product) return null;
+    const { ratingCount, reviews, ...rest } = product;
+    const formattedReviews = (reviews || []).map((rev: any) => ({
+      id: rev.id,
+      userName: rev.user?.name || rev.userName || 'Anonymous',
+      rating: rev.rating,
+      comment: rev.comment,
+      createdAt: rev.createdAt,
+    }));
+    return {
+      ...rest,
+      numReviews: ratingCount ?? 0,
+      reviews: formattedReviews,
+    };
+  },
+
   createProduct: async (dto: ICreateProductDTO, createdBy: string) => {
     const product = await prisma.product.create({
       data: { ...dto, createdBy },
     });
-    return product;
+    return productService.formatProduct(product);
   },
 
   getAllProducts: async (params: IProductQueryParams) => {
@@ -26,7 +52,9 @@ export const productService = {
       includeInactive,
     } = params;
 
-    const skip = (page - 1) * limit;
+    const pageNum = Number(page);
+    const limitNum = Number(limit);
+    const skip = (pageNum - 1) * limitNum;
 
     // Build filter
     const where: any = {};
@@ -46,8 +74,8 @@ export const productService = {
     if (category) where.category = { equals: category, mode: 'insensitive' };
     if (minPrice !== undefined || maxPrice !== undefined) {
       where.price = {};
-      if (minPrice !== undefined) where.price.gte = minPrice;
-      if (maxPrice !== undefined) where.price.lte = maxPrice;
+      if (minPrice !== undefined) where.price.gte = Number(minPrice);
+      if (maxPrice !== undefined) where.price.lte = Number(maxPrice);
     }
     if (outOfStock === 'true' || (outOfStock as any) === true) {
       where.stock = 0;
@@ -61,7 +89,7 @@ export const productService = {
       prisma.product.findMany({
         where,
         skip,
-        take: limit,
+        take: limitNum,
         orderBy: { [sortBy]: sortOrder },
         select: {
           id: true,
@@ -82,7 +110,9 @@ export const productService = {
       prisma.product.count({ where }),
     ]);
 
-    return { products, total, page, limit };
+    const formattedProducts = products.map((p) => productService.formatProduct(p));
+
+    return { products: formattedProducts, total, page: pageNum, limit: limitNum };
   },
 
   getProductById: async (id: string) => {
@@ -100,7 +130,7 @@ export const productService = {
     });
 
     if (!product) throw ApiError.notFound('Product not found');
-    return product;
+    return productService.formatProductDetail(product);
   },
 
   updateProduct: async (id: string, dto: IUpdateProductDTO & { image?: string; imageUrl?: string }) => {
@@ -122,15 +152,29 @@ export const productService = {
       delete updateData.imageUrl;
     }
 
-    return prisma.product.update({ where: { id }, data: updateData });
+    const updated = await prisma.product.update({ where: { id }, data: updateData });
+    return productService.formatProduct(updated);
   },
 
   deleteProduct: async (id: string) => {
     const product = await prisma.product.findUnique({ where: { id } });
     if (!product) throw ApiError.notFound('Product not found');
 
-    // Soft delete
-    await prisma.product.update({ where: { id }, data: { isActive: false } });
+    // Clean up product from all users' carts and wishlists
+    await prisma.cartItem.deleteMany({ where: { productId: id } });
+    await prisma.wishlist.deleteMany({ where: { productId: id } });
+
+    // Check if product exists in any order
+    const orderCount = await prisma.orderItem.count({ where: { productId: id } });
+
+    if (orderCount === 0) {
+      // Product is not in any order -> permanently delete from database
+      await prisma.review.deleteMany({ where: { productId: id } });
+      await prisma.product.delete({ where: { id } });
+    } else {
+      // Product is in existing order(s) -> deactivate (soft delete) to maintain order integrity
+      await prisma.product.update({ where: { id }, data: { isActive: false } });
+    }
   },
 
   updateStock: async (id: string, quantity: number): Promise<void> => {

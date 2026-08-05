@@ -43,6 +43,7 @@ export interface IProductResponse {
   images: string[];
   rating: number;
   ratingCount: number;
+  numReviews?: number;
   isActive: boolean;
   createdAt: Date;
 }

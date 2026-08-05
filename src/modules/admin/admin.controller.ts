@@ -75,12 +75,12 @@ export const adminController = {
 
   createProduct: asyncHandler(async (req: Request, res: Response) => {
     const product = await adminService.createProductAsAdmin(req.body, req.user!.userId);
-    res.status(201).json(ApiResponse.created('Product created successfully by admin', product));
+    res.status(201).json(ApiResponse.created('Product created successfully in database', product));
   }),
 
   updateProduct: asyncHandler(async (req: Request, res: Response) => {
     const product = await adminService.updateProductAsAdmin(req.params.id as string, req.body);
-    res.status(200).json(ApiResponse.success('Product updated successfully by admin', product));
+    res.status(200).json(ApiResponse.success('Product updated successfully in database', product));
   }),
 
   updateProductImages: asyncHandler(async (req: Request, res: Response) => {
@@ -91,6 +91,11 @@ export const adminController = {
 
   deleteProduct: asyncHandler(async (req: Request, res: Response) => {
     await adminService.deleteProductAsAdmin(req.params.id as string);
-    res.status(200).json(ApiResponse.success('Product deleted successfully by admin', null));
+    res.status(200).json(
+      ApiResponse.success('Product deleted successfully from database', {
+        success: true,
+        message: 'Product deleted',
+      })
+    );
   }),
 };
